@@ -1,3 +1,12 @@
+/**
+ * Copyright (c) 2010 LabJack Corp.
+ * See License.txt for more information
+ *
+ * Name: LabJackLayer.cpp
+ * Desc: An object that acts as a thin software layer between
+ *		 LabJackDASY and the UD driver
+**/
+
 /** Includes **/
 
 // Debug

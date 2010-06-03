@@ -1,6 +1,10 @@
 /**
-* Name: LabJackDasy.cpp
-* Desc: A specially tailored dll that allows DASYLab to control LabJack UD devices
+ * Copyright (c) 2010 LabJack Corp.
+ * See License.txt for more information
+ *
+ * Name: LabJackDasy.cpp
+ * Desc: A layer that provides entry points for
+ *		 and simplifies interactions with DASYLab
 **/
 
 /** Disable warnings in Win32 headers **/

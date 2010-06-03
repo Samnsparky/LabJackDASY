@@ -1,6 +1,10 @@
 /**
-* Name: LabJackDasy.h
-* Desc: A specially tailored dll that allows DASYLab to control LabJack UD devices (header file)
+ * Copyright (c) 2010 LabJack Corp.
+ * See License.txt for more information
+ *
+ * Name: LabJackDasy.h
+ * Desc: A layer that provides entry points for
+ *		 and simplifies interactions with DASYLab
 **/
 
 //	DASYLab driver interface
