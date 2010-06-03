@@ -3,4 +3,38 @@
 LIBRARY      "LabJackDasy"
 
 EXPORTS
-    ; Explicit exports can go here
+	DRV_AdvanceAnalogOutputBuf		@1
+	DRV_AdvanceCounterOutputBuf		@2
+	DRV_AdvanceDigitalOutputBuf		@3
+	DRV_AdvanceInputBuf				@4
+	DRV_ExplainGainCode				@5
+	DRV_GetAnalogOutputBuf			@6
+	DRV_GetAnalogOutputStatus		@7
+	DRV_GetCounterOutputBuf			@8
+	DRV_GetCounterOutputStatus		@9
+	DRV_GetDigitalOutputBuf			@10
+	DRV_GetDigitalOutputStatus		@11
+	DRV_GetHardwareDescription		@12
+	DRV_GetInputBuf					@13
+	DRV_GetInputBufStatus			@14
+	DRV_GetMeasInfoEx				@15
+	DRV_KillDevice					@17
+	DRV_LoadWorksheet				@18
+	DRV_NewWorksheet				@19
+	DRV_ReadCounterInput			@20
+	DRV_ReadDigitalInput			@21
+	DRV_SaveWorksheet				@22
+	DRV_SetAnalogOutputBufferMode	@23
+	DRV_SetCounterOutputBufferMode	@24
+	DRV_SetDigitalOutputBufferMode	@25
+	DRV_SetInputBufferSize			@26
+	DRV_SetScanList					@27
+	DRV_ShowDialog					@28
+	DRV_ShowError					@29
+	DRV_StartMeas					@30
+	DRV_StopMeas					@31
+	DRV_TestStruct					@32
+	DRV_WriteAnalogOutput			@33
+	DRV_WriteCounterOutput			@34
+	DRV_WriteDigitalOutput			@35
+	DRV_InitDevice					@36
