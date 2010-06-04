@@ -81,6 +81,7 @@ class LabJackLayer {
 		const static int ANALOG = 1;
 		const static int DIGITAL = 2;
 		short GAIN_INFO[8];								// TODO: Need config
+		const static int MAX_SCANS_PER_SECOND = 50000;
 
 	public:
 		LabJackLayer(DRV_INFOSTRUCT * structAddress, long newDeviceType);
@@ -108,6 +109,7 @@ class LabJackLayer {
 		bool ConfirmDataStructure();
 		void StreamCallback(long scansAvailable, double userValue);
 		void SetError(DWORD newError);
+		bool IsFrequencyValid();
 
 	private:
 		void FillinfoStructure();

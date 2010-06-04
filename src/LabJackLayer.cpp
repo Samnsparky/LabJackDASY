@@ -469,6 +469,7 @@ void LabJackLayer::SetDeviceType(int type)
  * Args: callbackFunction: the pointer (cast as a long) of the function to have the UD
  *						   driver call. Should be a wrapper to this object's callback
  *						   function.
+ * Retn: True is successful and false otherwise
  **/
 void LabJackLayer::BeginExperiment(long callbackFunction)
 {
@@ -476,8 +477,13 @@ void LabJackLayer::BeginExperiment(long callbackFunction)
 	double dblValue;
 	int i;
 
-	// Indicate that we have started measuring
-	measRun = TRUE;
+	// Check that the device is capable of the desired frequency
+	if(!IsFrequencyValid())
+	{
+		MessageBox (GetActiveWindow (), "Whoops! Your LabJack is not capable of your desired frequency. Please see section 3.2 of the User's Guide for more information.", "LabJack Error", MB_OK | MB_ICONSTOP);
+		measRun = FALSE;
+		return;
+	}
 	
 	if (infoStruct->AcquisitionMode == DRV_AQM_STOP)
 		maxBlocks = infoStruct->MaxBlocks;
@@ -497,8 +503,6 @@ void LabJackLayer::BeginExperiment(long callbackFunction)
 	/* store time */
 	startTime = GetCurrentTime ();
 
-	isStreaming = TRUE; // TODO: REALLY need to configure this
-
 	// Find smallest channel
 	/*if (numAINRequested > 0)
 	{
@@ -511,20 +515,21 @@ void LabJackLayer::BeginExperiment(long callbackFunction)
 		smallestChannelType = DIGITAL;
 	}*/
 
-	//Configure the stream:
-    //Configure all analog inputs for 12-bit resolution
+	// Configure the stream
+
+    // Configure all analog inputs for 12-bit resolution
     lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chAIN_RESOLUTION, 12, 0, 0);
     ErrorHandler(lngErrorcode);
 
-    //Set the scan rate.
+    // Set the scan rate.
     lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_SCAN_FREQUENCY, infoStruct->AI_Frequency/(numAINRequested + numDIRequested), 0, 0);
     ErrorHandler(lngErrorcode);
 
-    //Give the driver a 5 second buffer (scanRate * channels * 5 seconds).
-    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_BUFFER_SIZE, infoStruct->AI_Frequency*(numAINRequested + numDIRequested)*5, 0, 0);
+    // Give the driver a 5 second buffer (scanRate * channels * 5 seconds).
+    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_BUFFER_SIZE, infoStruct->AI_Frequency*5, 0, 0);
     ErrorHandler(lngErrorcode);
 
-    //Configure reads to retrieve whatever data is available without waiting
+    // Configure reads to retrieve whatever data is available without waiting
     lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_WAIT_MODE, LJ_swNONE, 0, 0);
     ErrorHandler(lngErrorcode);
 
@@ -579,6 +584,11 @@ void LabJackLayer::BeginExperiment(long callbackFunction)
 	//Start the stream.
     lngErrorcode = eGet(lngHandle, LJ_ioSTART_STREAM, 0, &dblValue, 0);
     ErrorHandler(lngErrorcode);
+
+	isStreaming = TRUE; // TODO: REALLY need to configure this
+
+	// Indicate that we have started measuring
+	measRun = TRUE;
 }
 
 /**
@@ -915,4 +925,14 @@ void LabJackLayer::SetError(DWORD newError)
 bool LabJackLayer::CheckBitHigh(double value, int position)
 {
 	return std::bitset<sizeof(float)>(value).test(position);
+}
+
+/**
+ * Name: IsFrequencyValid()
+ * Desc: Returns true if the device is capable of streaming at the
+ *		 user's desired frequency and false otherwise
+**/
+bool LabJackLayer::IsFrequencyValid()
+{
+	return infoStruct->AI_Frequency*(numAINRequested+numDIRequested) <= MAX_SCANS_PER_SECOND;
 }

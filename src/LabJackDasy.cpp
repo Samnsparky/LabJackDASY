@@ -525,7 +525,7 @@ int _stdcall DRV_StartMeas()
 {
 	HCURSOR oldCursor;
 
-	/* show WAIT-status with cursor									*/
+	// show WAIT-status with cursor
 	oldCursor = SetCursor (LoadCursor (NULL, IDC_WAIT));
 
 	// Tell the LabJackLayer that we are ready
@@ -534,7 +534,10 @@ int _stdcall DRV_StartMeas()
 	// reset cursor
 	SetCursor (oldCursor);
 
-	return DRV_FUNCTION_OK;
+	if(deviceLayer->IsMeasuring())
+		return DRV_FUNCTION_OK;
+	else
+		return DRV_FUNCTION_FALSE;
 }
 
 /**
