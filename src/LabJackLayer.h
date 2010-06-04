@@ -38,7 +38,7 @@ class LabJackLayer {
 														// DASYLab's buffer
 		DWORD doStoreIndex;								// The index of the next available position for digital output
 														// in DASYLab's buffer
-		DWORD aiStoreIndex;								// The index of the next available position for analog input
+		DWORD inputStoreIndex;								// The index of the next available position for analog input
 														// in DASYLab's buffer
 		DRV_INFOSTRUCT * infoStruct;					// Pointer to DASYLab's information structure
 		DWORD aoBufferSize;								// Analog output buffer size
@@ -46,7 +46,7 @@ class LabJackLayer {
 		DWORD aiRetrieveIndex;							// Index of the next index of input to be processed
 		bool wrapAround;								// For circular buffer
 		LPSAMPLE aoBufferAdr;							// Analog output buffer address
-		LPSAMPLE aiBufferAdr;							// Analog input buffer address
+		LPSAMPLE inputBufferAdr;						// Analog/digital input buffer address
 		LPSAMPLE doBufferAdr;							// Digital output buffer address
 		bool analogBufferValid;							// flag for if the analog input buffer is full
 		DRV_MEASINFO measInfo;							// DASYLab structure that keeps track of the status
@@ -85,23 +85,22 @@ class LabJackLayer {
 	public:
 		LabJackLayer(DRV_INFOSTRUCT * structAddress, long newDeviceType);
 		//~LabJackLayer(void);
-		void AdvanceAnalogInputBuf();
+		void AdvanceInputBuf();
 		void AdvanceAnalogOutputBuf();
 		void AdvanceDigitalOutputBuf();
-		void AdvanceInputBuf();
 		LPSAMPLE GetAnalogOutputBuf();
 		bool GetAnalogOutputStatus();
 		LPSAMPLE GetDigitalOutputBuf();
 		bool GetDigitalOutputStatus();
-		LPSAMPLE GetAnalogInputBuf();
-		bool GetAnalogInputStatus();
+		LPSAMPLE GetInputBuf();
+		bool GetInputStatus();
 		DRV_MEASINFO * GetMeasInfo();
 		bool IsOpen();
 		long GetError();
 		void CleanUp();
 		void AllocateAOBuffer(UDWORD nSamples);
 		void SetDigitalOutputBufferMode(DWORD numSamples, DWORD startDelay);
-		bool AllocateAIBuffer(DWORD size);
+		bool AllocateInputBuffer(DWORD size);
 		bool IsMeasuring();
 		void SetDeviceType(int type);
 		void BeginExperiment(long streamCallback);
@@ -122,5 +121,6 @@ class LabJackLayer {
 		SAMPLE ConvertAIValue(double value, UINT channel);
 		void FreeLockedMem (LPSAMPLE bufferadr);
 		LPSAMPLE AllocLockedMem (DWORD nSamples, DRV_INFOSTRUCT * infoStruct);
+		bool CheckBitHigh(double value, int position);
 };
 #endif

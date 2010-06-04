@@ -17,11 +17,16 @@
 // Windows
 #include "stdafx.h"
 
+// Bitset
+#include <bitset>
+
 //	LabJack
 #include "c:\program files\labjack\drivers\LabJackUD.h" // TODO: needs to be flexible
 
 // Class header file
 #include "LabJackLayer.h"
+
+using namespace std;
 
 /**
  * Name: LabJackLayer(DRV_infoStruct *StructAddress, long newDeviceType)
@@ -34,7 +39,7 @@ LabJackLayer::LabJackLayer(DRV_INFOSTRUCT * structAddress, long newDeviceType)
 	aiRetrieveIndex = 0;
 	wrapAround = FALSE;
 	aoStoreIndex = 0;
-	aiStoreIndex = 0;
+	inputStoreIndex = 0;
 	analogBufferValid = FALSE;
 	open = FALSE;
 	measRun = FALSE;
@@ -45,7 +50,7 @@ LabJackLayer::LabJackLayer(DRV_INFOSTRUCT * structAddress, long newDeviceType)
 
 	// Open the LabJack and create buffer
 	infoStruct->Error = OpenLabJack (deviceType, LJ_ctUSB, "1", 1, &lngHandle); // U6, UE9
-	if (!infoStruct->Error && AllocateAIBuffer (DEFAULT_BUFFER_SIZE)) 
+	if (!infoStruct->Error && AllocateInputBuffer (DEFAULT_BUFFER_SIZE)) 
 		open = TRUE;
 	
 	// Fill gains
@@ -93,7 +98,7 @@ void LabJackLayer::AdvanceDigitalOutputBuf()
  * Name: AdvanceDigitalOutputBuf()
  * Desc: Moves retrieve index one block forward for intermediate buffer
 **/
-void LabJackLayer::AdvanceAnalogInputBuf()
+void LabJackLayer::AdvanceInputBuf()
 {
 	/* mark processed data - one block processed */
 	aiRetrieveIndex += infoStruct->ADI_BlockSize;
@@ -156,17 +161,17 @@ bool LabJackLayer::GetDigitalOutputStatus()
 }
 
 /**
- * Name: DRV_GetAnalogInputBuf()
- * Desc: Return a pointer to a buffer for new analog input data
+ * Name: DRV_GetInputBuf()
+ * Desc: Return a pointer to a buffer for new input data
 **/
-LPSAMPLE LabJackLayer::GetAnalogInputBuf()
+LPSAMPLE LabJackLayer::GetInputBuf()
 {
 	LPSAMPLE addr;
 
 	if (analogBufferValid)
 	{
 		/* get adress of data */
-		addr = ((LPSAMPLE) aiBufferAdr) + aiRetrieveIndex;
+		addr = ((LPSAMPLE) inputBufferAdr) + aiRetrieveIndex;
 	}
 	else
 	{
@@ -177,17 +182,17 @@ LPSAMPLE LabJackLayer::GetAnalogInputBuf()
 }
 
 /**
- * Name: GetAnalogInputStatus()
+ * Name: GetInputStatus()
  * Desc: Test if input data are waiting to be processed
 **/
-bool LabJackLayer::GetAnalogInputStatus()
+bool LabJackLayer::GetInputStatus()
 {
 	long delta;
 
 	if (maxBlocks == -1L)
 		return FALSE;
 
-	delta = aiStoreIndex - aiRetrieveIndex;
+	delta = inputStoreIndex - aiRetrieveIndex;
 
 	if ( wrapAround )
 	{
@@ -248,8 +253,8 @@ void LabJackLayer::FillinfoStructure()
 	infoStruct->Max_CT_Channel = 0; // TODO: Counters have not yet been implemented
 	infoStruct->DIO_Width = 1; // 1 bit per channel
 
-	// Make transfer values doubles
-	infoStruct->ADI_BlockSize = 8;
+	// Set block size to 1 for most responsiveness
+	infoStruct->ADI_BlockSize = 1;
 
 	// Channel info?
 	//_fmemset (infoStruct->AI_ChInfo, 0, sizeof (infoStruct->AI_ChInfo));
@@ -336,8 +341,8 @@ void LabJackLayer::CleanUp()
 {
 	// Clean up the buffers
 	//maxRamSize = 0;
-	KillBuffer(aiBufferAdr);
-	delete aiBufferAdr;
+	KillBuffer(inputBufferAdr);
+	delete inputBufferAdr;
 	KillBuffer(aoBufferAdr);
 	delete aoBufferAdr;
 	KillBuffer(doBufferAdr);
@@ -411,20 +416,20 @@ void LabJackLayer::SetDigitalOutputBufferMode(DWORD numSamples, DWORD startDelay
 }
 
 /**
- * Name: AllocateAOBuffer(DWORD nSamples)
- * Desc: Ensures that the analog input buffer for DASYLab is sufficiently large
- * Note: DASYLab's example checked to see if aiBufferAdr is null after allocating
+ * Name: AllocateInputBuffer(DWORD nSamples)
+ * Desc: Ensures that the analog/digital input buffer for DASYLab is sufficiently large
+ * Note: DASYLab's example checked to see if inputBufferAdr is null after allocating
  *		 memory to see if there is enough and, thus, this method returns bool. 
  *		 It was not present in the others and might not be needed though.
 **/
-bool LabJackLayer::AllocateAIBuffer(DWORD size)
+bool LabJackLayer::AllocateInputBuffer(DWORD size)
 {
-	KillBuffer (aiBufferAdr);
+	KillBuffer (inputBufferAdr);
 
-	aiBufferAdr = AllocLockedMem ( size*2, infoStruct );
+	inputBufferAdr = AllocLockedMem ( size*2, infoStruct );
 
 	// TODO: Didn't need it for the others...
-	if ( aiBufferAdr == NULL )
+	if ( inputBufferAdr == NULL )
 	{
 		infoStruct->DriverBufferSize = infoStruct->ADI_BlockSize;
 		infoStruct->Error = DRV_ERR_NOTENOUGHMEM;
@@ -482,7 +487,7 @@ void LabJackLayer::BeginExperiment(long callbackFunction)
 	// (re-)set vars for buffer handling
 	wrapAround = FALSE;
 	aiRetrieveIndex = 0;
-	aiStoreIndex = 0;
+	inputStoreIndex = 0;
 
 	aiChannel = 0;
 	aoCount = 0;
@@ -495,7 +500,7 @@ void LabJackLayer::BeginExperiment(long callbackFunction)
 	isStreaming = TRUE; // TODO: REALLY need to configure this
 
 	// Find smallest channel
-	if (numAINRequested > 0)
+	/*if (numAINRequested > 0)
 	{
 		smallestChannel = analogInputScanList[0];
 		smallestChannelType = ANALOG;
@@ -504,29 +509,40 @@ void LabJackLayer::BeginExperiment(long callbackFunction)
 	{
 		smallestChannel = digitalInputScanList[0];
 		smallestChannelType = DIGITAL;
-	}
+	}*/
 
 	//Configure the stream:
     //Configure all analog inputs for 12-bit resolution
     lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chAIN_RESOLUTION, 12, 0, 0);
     ErrorHandler(lngErrorcode);
+
     //Set the scan rate.
-    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_SCAN_FREQUENCY, infoStruct->AI_Frequency/numAINRequested, 0, 0);
+    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_SCAN_FREQUENCY, infoStruct->AI_Frequency/(numAINRequested + numDIRequested), 0, 0);
     ErrorHandler(lngErrorcode);
+
     //Give the driver a 5 second buffer (scanRate * channels * 5 seconds).
-    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_BUFFER_SIZE, infoStruct->AI_Frequency*numAINRequested*5, 0, 0);
+    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_BUFFER_SIZE, infoStruct->AI_Frequency*(numAINRequested + numDIRequested)*5, 0, 0);
     ErrorHandler(lngErrorcode);
+
     //Configure reads to retrieve whatever data is available without waiting
     lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_WAIT_MODE, LJ_swNONE, 0, 0);
     ErrorHandler(lngErrorcode);
+
 	// Clear stream channels
 	lngErrorcode = AddRequest(lngHandle, LJ_ioCLEAR_STREAM_CHANNELS, 0, 0, 0, 0);
     ErrorHandler(lngErrorcode);
-    //Define the scan list
-	// TODO: Digital Input
+
+    // Define the analog input scan list
 	for(i=0; i<numAINRequested; i++)
 	{
 		lngErrorcode = AddRequest(lngHandle, LJ_ioADD_STREAM_CHANNEL, analogInputScanList[i], 0, 0, 0);
+		ErrorHandler(lngErrorcode);
+	}
+
+	// Define the digital input scan list
+	if (numDIRequested > 0)
+	{
+		lngErrorcode = AddRequest(lngHandle, LJ_ioADD_STREAM_CHANNEL, 193, 0, 0, 0); // Channel 193 provides FIO/EIO data (sec. 3.2.1 of user's gude)
 		ErrorHandler(lngErrorcode);
 	}
 
@@ -614,7 +630,7 @@ bool LabJackLayer::ConfirmDataStructure()
 		return FALSE;
 	}
 	/* When TestStruct called, all buffers must be allocated */
-	if (aiBufferAdr == NULL)
+	if (inputBufferAdr == NULL)
 	{
 		infoStruct->Error = DRV_ERR_NOTENOUGHMEM;
 		return FALSE;
@@ -667,15 +683,15 @@ bool LabJackLayer::ConfirmDataStructure()
 	/* a multiple of the blocksize								 */
 
 	if (infoStruct->DriverBufferSize * sizeof (SAMPLE) != maxRamSize)
-		AllocateAIBuffer (infoStruct->DriverBufferSize);
+		AllocateInputBuffer (infoStruct->DriverBufferSize);
 	blockSize = infoStruct->ADI_BlockSize * sizeof (SAMPLE);	  /* Recalculate from SAMPLES to BYTES */
 	minBuffer = blockSize * (maxRamSize / blockSize);
 	if (minBuffer != maxRamSize)
 	{
-		AllocateAIBuffer (minBuffer / sizeof (SAMPLE));
+		AllocateInputBuffer (minBuffer / sizeof (SAMPLE));
 	}
 
-	aiStoreIndex = 0l;
+	inputStoreIndex = 0l;
 	//maxBufferIndex = maxRamSize / sizeof (SAMPLE);
 
 	/* calculate count of active channels */
@@ -736,21 +752,35 @@ void LabJackLayer::StreamCallback(long scansAvailable, double userValue)
 	lngErrorcode = eGet(lngHandle, LJ_ioGET_STREAM_DATA, LJ_chALL_CHANNELS, &dblScansAvailable, padblData);
 	ErrorHandler(lngErrorcode);
 	
-	// Convert values and place into buffer
+	// Convert analog input values and place into buffer
 	for(i=0; i<numAINRequested; i++)
 	{
-		/* feed channel value in FIFO */
-		aiBufferAdr[aiStoreIndex] = ConvertAIValue(adblData[i], i);
+		// Feed channel value in FIFO buffer
+		inputBufferAdr[inputStoreIndex] = ConvertAIValue(adblData[i], i);
 
-		/* increment FIFO index and wrap around */
-		aiStoreIndex++;
-		if (aiStoreIndex == infoStruct->DriverBufferSize)
+		// increment FIFO index and wrap around
+		inputStoreIndex++;
+		if (inputStoreIndex == infoStruct->DriverBufferSize)
 		{
-			aiStoreIndex = 0;
+			inputStoreIndex = 0;
 			wrapAround = TRUE;
 		}
+	}
 
-		aiCount++;
+	// Determine states of digital input on channel 193
+	double diData = adblData[i+1];
+	for(i=0; i<numDIRequested; i++)
+	{
+		// Feed channel value in FIFO buffer
+		inputBufferAdr[inputStoreIndex] = CheckBitHigh(diData, digitalInputScanList[i]);
+
+		// increment FIFO index and wrap around
+		inputStoreIndex++;
+		if (inputStoreIndex == infoStruct->DriverBufferSize)
+		{
+			inputStoreIndex = 0;
+			wrapAround = TRUE;
+		}
 	}
 }
 
@@ -876,4 +906,13 @@ LPSAMPLE LabJackLayer::AllocLockedMem (DWORD nSamples, DRV_INFOSTRUCT * infoStru
 void LabJackLayer::SetError(DWORD newError)
 {
 	infoStruct->Error = newError;
+}
+
+/**
+ * Name: CheckBitHigh(float value, int position)
+ * Desc: Returns true if bit at position is 1 or false otherwise
+**/
+bool LabJackLayer::CheckBitHigh(double value, int position)
+{
+	return std::bitset<sizeof(float)>(value).test(position);
 }

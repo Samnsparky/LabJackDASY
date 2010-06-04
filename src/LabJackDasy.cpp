@@ -133,11 +133,11 @@ int _stdcall DRV_AdvanceDigitalOutputBuf()
 
 /**
  * Name: DRV_AdvanceInputBuf()
- * Desc: Frees oldest block in intermediate buffer after being processed by DASYLab (analog input)
+ * Desc: Frees oldest block in intermediate buffer after being processed by DASYLab
 **/
 int _stdcall DRV_AdvanceInputBuf()
 {
-	deviceLayer->AdvanceAnalogInputBuf();
+	deviceLayer->AdvanceInputBuf(); //AnalogInputBuf();
 	return DRV_FUNCTION_OK;
 }
 
@@ -281,22 +281,22 @@ HW_COMPONENT * _stdcall DRV_GetHardwareDescription()
 
 /**
  * Name: DRV_GetInputBuf()
- * Desc: Return a pointer to a buffer for new analog input data
+ * Desc: Return a pointer to a buffer for new input data
 **/
 LPSAMPLE _stdcall DRV_GetInputBuf()
 {
-	return deviceLayer->GetAnalogInputBuf();
+	return deviceLayer->GetInputBuf(); //AnalogInputBuf();
 }
 
 /**
  * Name: GetInputBufStatus()
- * Desc: Test if input data are waiting to be processed
+ * Desc: Test if input data is waiting to be processed
  * Retn: DRV_FUNCTION, less than ADI_BlockSize are waiting in the buffer
  *		 DRV_FUNCTION_OK, otherwise
 **/
 int _stdcall DRV_GetInputBufStatus()
 {
-	return deviceLayer->GetAnalogInputStatus();
+	return deviceLayer->GetInputStatus(); //AnalogInputStatus();
 }
 
 /**
@@ -398,7 +398,7 @@ DWORD _stdcall DRV_ReadCounterInput(UINT ch)
  * Note: This is a stub and is not currrently planned to be completed.
  *		 While the LabJack is capable (designed) to preform this action,
  *		 DASYLab will simply call this function from time to time anyway
- *		 so stream through command response will be favored.
+ *		 so stream through command response / streaming mode will be favored.
 **/
 DWORD _stdcall DRV_ReadDigitalInput(UINT ch)
 {
@@ -455,13 +455,13 @@ int _stdcall DRV_SetDigitalOutputBufferMode(UINT mode, DWORD numSamples, DWORD s
 
 /**
  * Name: DRV_SetInputBufferSize(DWORD Size)
- * Desc: Ensures that the analog input buffer for DASYLab is sufficienly large
+ * Desc: Ensures that the input buffer for DASYLab is sufficienly large
 **/
 int _stdcall DRV_SetInputBufferSize(DWORD size)
 {
 	if ( !deviceLayer->IsMeasuring() )
 	{
-		deviceLayer->AllocateAIBuffer(size);
+		deviceLayer->AllocateInputBuffer(size); //AIBuffer(size);
 		return DRV_FUNCTION_OK;
 	}
 
