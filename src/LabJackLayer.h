@@ -114,6 +114,7 @@ class LabJackLayer {
 		bool IsFrequencyValid();
 		bool RequiresStreaming();
 		void CommandResponseCallback();
+		void WriteDigitalOutput(UINT chan, DWORD outVal);
 
 	private:
 		void FillinfoStructure();

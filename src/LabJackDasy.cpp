@@ -591,7 +591,8 @@ int _stdcall DRV_WriteCounterOutput(UINT chan, DWORD outVal)
 **/
 int _stdcall DRV_WriteDigitalOutput(UINT chan, DWORD outVal)
 {
-	// TODO: Finish this stub (0.1)
+	deviceLayer->WriteDigitalOutput(chan, outVal);
+
 	return DRV_FUNCTION_OK;
 }
 

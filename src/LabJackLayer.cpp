@@ -1081,3 +1081,16 @@ void LabJackLayer::AddToInputBuffer(SAMPLE newValue)
 		wrapAround = TRUE;
 	}
 }
+
+/**
+ * Name: WriteDigitalOutput(UINT chan, DWORD outVal)
+ * Desc: Sets a FIO line high or low
+**/
+void LabJackLayer::WriteDigitalOutput(UINT chan, DWORD outVal)
+{
+	long lngErrorcode;
+
+	// TODO: AddRequest did not work here but this should be changed in a future release
+	lngErrorcode = ePut(lngHandle, LJ_ioPUT_DIGITAL_BIT, chan, outVal, 0);
+	ErrorHandler(lngErrorcode);
+}
