@@ -115,6 +115,7 @@ class LabJackLayer {
 		bool RequiresStreaming();
 		void CommandResponseCallback();
 		void WriteDigitalOutput(UINT chan, DWORD outVal);
+		void WriteDAC(UINT chan, DWORD outVal);
 
 	private:
 		void FillinfoStructure();
@@ -134,5 +135,6 @@ class LabJackLayer {
 		bool InstallTimerInterruptHandler();
 		void RemoveTimerInterruptHandler();
 		void AddToInputBuffer(SAMPLE newValue);
+		double ConvertAOValue(DWORD value, UINT channel);
 };
 #endif

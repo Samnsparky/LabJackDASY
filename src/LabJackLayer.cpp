@@ -332,6 +332,13 @@ void LabJackLayer::FillU6Info()
 	{
 		infoStruct->GainInfo[n] = GAIN_INFO[n];
 	}
+
+	for (n = 0; n < infoStruct->Max_AO_Channel; n++)
+	{
+		infoStruct->AO_ChInfo[n].OutputRange_Min = 0;
+		infoStruct->AO_ChInfo[n].OutputRange_Max = 5;
+		infoStruct->AO_ChInfo[n].Resolution = 16384;		/* == 12 Bit */
+	}
 }
 
 /**
@@ -1093,4 +1100,35 @@ void LabJackLayer::WriteDigitalOutput(UINT chan, DWORD outVal)
 	// TODO: AddRequest did not work here but this should be changed in a future release
 	lngErrorcode = ePut(lngHandle, LJ_ioPUT_DIGITAL_BIT, chan, outVal, 0);
 	ErrorHandler(lngErrorcode);
+}
+
+/**
+ * Name: WriteDAC(UINT chan, DWORD outVal)
+ * Desc: Writes an analog output voltage to the given DAC channel
+**/
+void LabJackLayer::WriteDAC(UINT chan, DWORD outVal)
+{
+	long lngErrorcode = 0;
+	double convertedVoltage;
+
+	// Convert Voltage
+	convertedVoltage = ConvertAOValue(outVal, chan);
+
+	// Write the value for the given channel
+	lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_DAC, chan, convertedVoltage, 0, 0);
+	GoOne(lngHandle); // TODO: What is up here? Performance issue!
+	ErrorHandler(lngErrorcode);
+}
+
+/**
+ * Name: ConvertAOValue(DWORD value, UINT channel)
+ * Desc: Converts a DASYLab sample into a value suitable for LabJack DAC use	
+**/
+double LabJackLayer::ConvertAOValue(DWORD value, UINT channel)
+{
+	double inputRange = infoStruct->AI_ChInfo[channel].InputRange_Max - infoStruct->AI_ChInfo[channel].InputRange_Min;
+	double bitsAvailable = sizeof(SAMPLE) * 8;
+	double maxValue = pow(2.0, bitsAvailable-1);
+	double conversionFactor = (maxValue * 2.0 / inputRange); // Multiply by 2 to get both negative and positive values
+	return value / conversionFactor;
 }

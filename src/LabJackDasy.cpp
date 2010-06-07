@@ -569,7 +569,7 @@ int _stdcall DRV_TestStruct()
 **/
 int _stdcall DRV_WriteAnalogOutput(UINT chan, DWORD outVal)
 {
-	// TODO: Finish this stub (0.1)
+	deviceLayer->WriteDAC(chan, outVal);
 	return DRV_FUNCTION_OK;
 }
 
@@ -587,7 +587,6 @@ int _stdcall DRV_WriteCounterOutput(UINT chan, DWORD outVal)
 /**
  * Name: DRV_WriteDigitalOutput
  * Desc: Entry point for DASYLab to write the given value to the given counter channel
- * Note: This is a stub that will be implemented for Alpha 0.1
 **/
 int _stdcall DRV_WriteDigitalOutput(UINT chan, DWORD outVal)
 {
