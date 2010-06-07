@@ -529,7 +529,7 @@ int _stdcall DRV_StartMeas()
 	oldCursor = SetCursor (LoadCursor (NULL, IDC_WAIT));
 
 	// Tell the LabJackLayer that we are ready
-	deviceLayer->BeginExperiment((long)(&StreamCallback));
+	deviceLayer->BeginExperiment();
     
 	// reset cursor
 	SetCursor (oldCursor);
@@ -602,7 +602,17 @@ int _stdcall DRV_WriteDigitalOutput(UINT chan, DWORD outVal)
  * Desc: Wrapper function that provides an entry point for the UD driver
  *		 to call the StreamCallback function on the device layer
 **/
-void StreamCallback(long scansAvailable, double userValue)
+void StreamCallbackWrapper(long scansAvailable, double userValue)
 {
 	deviceLayer->StreamCallback(scansAvailable, userValue);
+}
+
+/**
+ * Name: CommandResponseCallback()
+ * Desc: Wrapper function that provides an entry point for the windows
+ *		 to call the PollDevice function on the device layer
+**/
+void CALLBACK CommandResponseCallbackWrapper(UINT uID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
+{
+	deviceLayer->CommandResponseCallback();
 }

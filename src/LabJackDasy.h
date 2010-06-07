@@ -57,7 +57,8 @@ int _stdcall DRV_WriteCounterOutput(UINT chan, DWORD outVal);
 int _stdcall DRV_WriteDigitalOutput(UINT chan, DWORD outVal);
 
 // Helper functions not exported to DASYLab
-void StreamCallback(long scansAvailable, double userValue);
+void StreamCallbackWrapper(long scansAvailable, double userValue);
+void CALLBACK CommandResponseCallbackWrapper(UINT uID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2);
 
 #ifdef  __cplusplus
 } // extern C

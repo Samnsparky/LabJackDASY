@@ -82,6 +82,8 @@ class LabJackLayer {
 		const static int DIGITAL = 2;
 		short GAIN_INFO[8];								// TODO: Need config
 		const static int MAX_SCANS_PER_SECOND = 50000;
+		UINT hTimerID;									// TODO: This might need to be static?
+		const static int START_STREAM_FREQUENCY = 20;	// Start streaming at 20 Hz
 
 	public:
 		LabJackLayer(DRV_INFOSTRUCT * structAddress, long newDeviceType);
@@ -104,12 +106,14 @@ class LabJackLayer {
 		bool AllocateInputBuffer(DWORD size);
 		bool IsMeasuring();
 		void SetDeviceType(int type);
-		void BeginExperiment(long streamCallback);
+		void BeginExperiment();
 		void StopExperiment();
 		bool ConfirmDataStructure();
 		void StreamCallback(long scansAvailable, double userValue);
 		void SetError(DWORD newError);
 		bool IsFrequencyValid();
+		bool RequiresStreaming();
+		void CommandResponseCallback();
 
 	private:
 		void FillinfoStructure();
@@ -124,5 +128,10 @@ class LabJackLayer {
 		void FreeLockedMem (LPSAMPLE bufferadr);
 		LPSAMPLE AllocLockedMem (DWORD nSamples, DRV_INFOSTRUCT * infoStruct);
 		bool CheckBitHigh(double value, int position);
+		void StartStreaming();
+		void StartCommandResponse();
+		bool InstallTimerInterruptHandler();
+		void RemoveTimerInterruptHandler();
+		void AddToInputBuffer(SAMPLE newValue);
 };
 #endif

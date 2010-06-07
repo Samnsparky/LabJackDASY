@@ -16,6 +16,11 @@
 
 // Windows
 #include "stdafx.h"
+#include <windows.h>
+
+// Timer
+#include<mmsystem.h>
+#pragma comment(lib, "winmm.lib")
 
 // Bitset
 #include <bitset>
@@ -25,6 +30,9 @@
 
 // Class header file
 #include "LabJackLayer.h"
+
+// Application
+#include "LabJackDasy.h"
 
 using namespace std;
 
@@ -43,6 +51,7 @@ LabJackLayer::LabJackLayer(DRV_INFOSTRUCT * structAddress, long newDeviceType)
 	analogBufferValid = FALSE;
 	open = FALSE;
 	measRun = FALSE;
+	isStreaming = FALSE;
 
 	// Save the structure address and device type
 	infoStruct = structAddress;
@@ -54,7 +63,7 @@ LabJackLayer::LabJackLayer(DRV_INFOSTRUCT * structAddress, long newDeviceType)
 		open = TRUE;
 	
 	// Fill gains
-	// TODO: This is horribly inefficient and inaccurate
+	// TODO: This is horribly inefficient and inaccurate (0.1)
 	GAIN_INFO[0] = -2;
 	GAIN_INFO[1] = 1;
 	GAIN_INFO[2] = 2;
@@ -67,6 +76,12 @@ LabJackLayer::LabJackLayer(DRV_INFOSTRUCT * structAddress, long newDeviceType)
 
 	// Fill the information structure
 	FillinfoStructure();
+
+	// Issue 4: Command-response does not work until the experiment is started for a second time.
+	// TODO: This is a somewhat dirty fix that, if possible, should be addressed with timer
+	//		 configuration changes. (0.2)
+    InstallTimerInterruptHandler();
+	RemoveTimerInterruptHandler();
 }
 
 /**
@@ -100,10 +115,9 @@ void LabJackLayer::AdvanceDigitalOutputBuf()
 **/
 void LabJackLayer::AdvanceInputBuf()
 {
-	/* mark processed data - one block processed */
+	// mark processed data - one block processed
 	aiRetrieveIndex += infoStruct->ADI_BlockSize;
 
-	// TODO: This seems dangerous . . . because I wrote it.
 	if (aiRetrieveIndex == infoStruct->DriverBufferSize)
 	{
 		aiRetrieveIndex = 0;
@@ -471,11 +485,8 @@ void LabJackLayer::SetDeviceType(int type)
  *						   function.
  * Retn: True is successful and false otherwise
  **/
-void LabJackLayer::BeginExperiment(long callbackFunction)
+void LabJackLayer::BeginExperiment()
 {
-	long lngErrorcode, lngIOType, lngChannel;
-	double dblValue;
-	int i;
 
 	// Check that the device is capable of the desired frequency
 	if(!IsFrequencyValid())
@@ -500,95 +511,16 @@ void LabJackLayer::BeginExperiment(long callbackFunction)
 	doCount = 0;
 	aiCount = 0;
 
-	/* store time */
-	startTime = GetCurrentTime ();
+	// store start time
+	startTime = GetCurrentTime();
 
-	// Find smallest channel
-	/*if (numAINRequested > 0)
-	{
-		smallestChannel = analogInputScanList[0];
-		smallestChannelType = ANALOG;
-	}
+	// TODO: A more empirical approach to determining which mode would
+	//       be more efficient
+	// Start streaming / command response loop
+	if (infoStruct->AI_Frequency < START_STREAM_FREQUENCY)
+		StartCommandResponse();
 	else
-	{
-		smallestChannel = digitalInputScanList[0];
-		smallestChannelType = DIGITAL;
-	}*/
-
-	// Configure the stream
-
-    // Configure all analog inputs for 12-bit resolution
-    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chAIN_RESOLUTION, 12, 0, 0);
-    ErrorHandler(lngErrorcode);
-
-    // Set the scan rate.
-    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_SCAN_FREQUENCY, infoStruct->AI_Frequency/(numAINRequested + numDIRequested), 0, 0);
-    ErrorHandler(lngErrorcode);
-
-    // Give the driver a 5 second buffer (scanRate * channels * 5 seconds).
-    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_BUFFER_SIZE, infoStruct->AI_Frequency*5, 0, 0);
-    ErrorHandler(lngErrorcode);
-
-    // Configure reads to retrieve whatever data is available without waiting
-    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_WAIT_MODE, LJ_swNONE, 0, 0);
-    ErrorHandler(lngErrorcode);
-
-	// Clear stream channels
-	lngErrorcode = AddRequest(lngHandle, LJ_ioCLEAR_STREAM_CHANNELS, 0, 0, 0, 0);
-    ErrorHandler(lngErrorcode);
-
-    // Define the analog input scan list
-	for(i=0; i<numAINRequested; i++)
-	{
-		lngErrorcode = AddRequest(lngHandle, LJ_ioADD_STREAM_CHANNEL, analogInputScanList[i], 0, 0, 0);
-		ErrorHandler(lngErrorcode);
-	}
-
-	// Define the digital input scan list
-	if (numDIRequested > 0)
-	{
-		lngErrorcode = AddRequest(lngHandle, LJ_ioADD_STREAM_CHANNEL, 193, 0, 0, 0); // Channel 193 provides FIO/EIO data (sec. 3.2.1 of user's gude)
-		ErrorHandler(lngErrorcode);
-	}
-
-	///* Install MultiMedia interrupt handler */
-	//if ( ! InstallTimerInterruptHandler() )
-	//{
-	//	infoStruct->Error = DRV_ERR_HARD_CONFLICT;
-	//	MessageBeep((UINT)-1);
-	//	return DRV_FUNCTION_FALSE;
-	//}
-
-	//Execute the list of requests.
-    lngErrorcode = GoOne(lngHandle);
-    ErrorHandler(lngErrorcode);
-    
-	//Get all the results just to check for errors.
-	lngErrorcode = GetFirstResult(lngHandle, &lngIOType, &lngChannel, &dblValue, 0, 0);
-	ErrorHandler(lngErrorcode);
-	while(lngErrorcode < LJE_MIN_GROUP_ERROR)
-	{
-		lngErrorcode = GetNextResult(lngHandle, &lngIOType, &lngChannel, &dblValue, 0, 0);
-		if(lngErrorcode != LJE_NO_MORE_DATA_AVAILABLE)
-			ErrorHandler(lngErrorcode);
-	}
-    
-	// Put in the callback. If the X1 parameter is set to something other than 0
-	// the driver will call the specified function after that number of scans
-	// have been reached.
-	//long pCallback = void (*StreamCallback)(long ScansAvailable, double UserData);
-	//pCallback = &StreamCallback;
-    lngErrorcode = ePut(lngHandle, LJ_ioSET_STREAM_CALLBACK, callbackFunction, 0, 0);
-	ErrorHandler(lngErrorcode);
-
-	//Start the stream.
-    lngErrorcode = eGet(lngHandle, LJ_ioSTART_STREAM, 0, &dblValue, 0);
-    ErrorHandler(lngErrorcode);
-
-	isStreaming = TRUE; // TODO: REALLY need to configure this
-
-	// Indicate that we have started measuring
-	measRun = TRUE;
+		StartStreaming();
 }
 
 /**
@@ -607,6 +539,8 @@ void LabJackLayer::StopExperiment()
 		ErrorHandler(lngErrorcode);
 		isStreaming = FALSE;
 	}
+	else
+		RemoveTimerInterruptHandler();
 
 	if (measRun)
 		measRun = FALSE;
@@ -765,16 +699,7 @@ void LabJackLayer::StreamCallback(long scansAvailable, double userValue)
 	// Convert analog input values and place into buffer
 	for(i=0; i<numAINRequested; i++)
 	{
-		// Feed channel value in FIFO buffer
-		inputBufferAdr[inputStoreIndex] = ConvertAIValue(adblData[i], i);
-
-		// increment FIFO index and wrap around
-		inputStoreIndex++;
-		if (inputStoreIndex == infoStruct->DriverBufferSize)
-		{
-			inputStoreIndex = 0;
-			wrapAround = TRUE;
-		}
+		AddToInputBuffer(ConvertAIValue(adblData[i], i));
 	}
 
 	// Determine states of digital input on channel 193
@@ -924,7 +849,7 @@ void LabJackLayer::SetError(DWORD newError)
 **/
 bool LabJackLayer::CheckBitHigh(double value, int position)
 {
-	return std::bitset<sizeof(float)>(value).test(position);
+	return std::bitset<sizeof(double)>(value).test(position);
 }
 
 /**
@@ -934,5 +859,225 @@ bool LabJackLayer::CheckBitHigh(double value, int position)
 **/
 bool LabJackLayer::IsFrequencyValid()
 {
-	return infoStruct->AI_Frequency*(numAINRequested+numDIRequested) <= MAX_SCANS_PER_SECOND;
+	return infoStruct->AI_Frequency <= MAX_SCANS_PER_SECOND;
+}
+
+/**
+ * Name: StartStreaming()
+ * Desc: Configures and starts analog/digital input streaming
+**/
+void LabJackLayer::StartStreaming()
+{
+	long lngErrorcode, lngIOType, lngChannel;
+	double dblValue;
+	int i;
+
+    // Configure all analog inputs for 12-bit resolution
+    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chAIN_RESOLUTION, 12, 0, 0);
+    ErrorHandler(lngErrorcode);
+
+    // Set the scan rate.
+    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_SCAN_FREQUENCY, infoStruct->AI_Frequency/(numAINRequested + numDIRequested), 0, 0);
+    ErrorHandler(lngErrorcode);
+
+    // Give the driver a 5 second buffer (scanRate * channels * 5 seconds).
+    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_BUFFER_SIZE, infoStruct->AI_Frequency*5, 0, 0);
+    ErrorHandler(lngErrorcode);
+
+    // Configure reads to retrieve whatever data is available without waiting
+    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_WAIT_MODE, LJ_swNONE, 0, 0);
+    ErrorHandler(lngErrorcode);
+
+	// Clear stream channels
+	lngErrorcode = AddRequest(lngHandle, LJ_ioCLEAR_STREAM_CHANNELS, 0, 0, 0, 0);
+    ErrorHandler(lngErrorcode);
+
+    // Define the analog input scan list
+	for(i=0; i<numAINRequested; i++)
+	{
+		lngErrorcode = AddRequest(lngHandle, LJ_ioADD_STREAM_CHANNEL, analogInputScanList[i], 0, 0, 0);
+		ErrorHandler(lngErrorcode);
+	}
+
+	// Define the digital input scan list
+	if (numDIRequested > 0)
+	{
+		lngErrorcode = AddRequest(lngHandle, LJ_ioADD_STREAM_CHANNEL, 193, 0, 0, 0); // Channel 193 provides FIO/EIO data (sec. 3.2.1 of user's gude)
+		ErrorHandler(lngErrorcode);
+	}
+
+	//Execute the list of requests.
+    lngErrorcode = GoOne(lngHandle);
+    ErrorHandler(lngErrorcode);
+    
+	//Get all the results just to check for errors.
+	lngErrorcode = GetFirstResult(lngHandle, &lngIOType, &lngChannel, &dblValue, 0, 0);
+	ErrorHandler(lngErrorcode);
+	while(lngErrorcode < LJE_MIN_GROUP_ERROR)
+	{
+		lngErrorcode = GetNextResult(lngHandle, &lngIOType, &lngChannel, &dblValue, 0, 0);
+		if(lngErrorcode != LJE_NO_MORE_DATA_AVAILABLE)
+			ErrorHandler(lngErrorcode);
+	}
+    
+	// Put in the callback. If the X1 parameter is set to something other than 0
+	// the driver will call the specified function after that number of scans
+	// have been reached.
+	//long pCallback = void (*StreamCallback)(long ScansAvailable, double UserData);
+	//pCallback = &StreamCallback;
+    lngErrorcode = ePut(lngHandle, LJ_ioSET_STREAM_CALLBACK, (long)StreamCallbackWrapper, 0, 0);
+	ErrorHandler(lngErrorcode);
+
+	//Start the stream.
+    lngErrorcode = eGet(lngHandle, LJ_ioSTART_STREAM, 0, &dblValue, 0);
+    ErrorHandler(lngErrorcode);
+
+	isStreaming = TRUE;
+
+	// Indicate that we have started measuring
+	measRun = TRUE;
+}
+
+/**
+ * Name: StartCommandResponse()
+ * Desc: Begin reading analog/digital input through command response
+**/
+void LabJackLayer::StartCommandResponse()
+{
+	// Find smallest channel
+	if (numAINRequested > 0)
+	{
+		smallestChannel = analogInputScanList[0];
+		smallestChannelType = ANALOG;
+	}
+	else
+	{
+		smallestChannel = digitalInputScanList[0];
+		smallestChannelType = DIGITAL;
+	}
+
+	// Install MultiMedia interrupt handler
+	if ( ! InstallTimerInterruptHandler() )
+	{
+		infoStruct->Error = DRV_ERR_HARD_CONFLICT;
+		MessageBeep((UINT)-1);
+		measRun = FALSE;
+	}
+	else
+		measRun = TRUE; // Indicate that we have started measuring
+}
+
+/**
+ * Name: InstallTimerInterruptHandler()
+ * Desc: Starts software timer to poll device
+ * Note: This is mostly copied from the DASYLab example driver code
+**/
+bool LabJackLayer::InstallTimerInterruptHandler()
+{
+	// TODO: DASYLab used a value of 10 for the resolution but I don't see why a minimum could not be found (0.1)
+	if ( hTimerID == 0 )
+	{
+		TIMECAPS capabilities;
+
+		if ( timeGetDevCaps ( &capabilities, sizeof(capabilities)) == TIMERR_NOCANDO )
+			return FALSE;
+		if ( capabilities.wPeriodMin > 10 || capabilities.wPeriodMax < 10 )
+			return FALSE;
+
+		if ( timeBeginPeriod (10) == TIMERR_NOCANDO )
+		{
+			timeEndPeriod (10);
+			return FALSE;
+		}
+
+		hTimerID = timeSetEvent ( (1.0/infoStruct->AI_Frequency*1000), 10, CommandResponseCallbackWrapper, (DWORD)this, TIME_PERIODIC);
+		if ( hTimerID == 0 )
+		{
+			timeEndPeriod (10);
+			return FALSE;
+		}
+	}		 
+
+	return TRUE;
+}
+
+/**
+ * Name: RemoveTimerInterruptHandler()
+ * Desc: Stops software timer to poll device
+ * Note: This is mostly copied from the DASYLab exmaple driver code
+**/
+void LabJackLayer::RemoveTimerInterruptHandler ()
+{
+	if ( hTimerID != 0 )
+	{
+		timeKillEvent( hTimerID );
+		timeEndPeriod (10);
+
+		hTimerID = 0;
+	}	
+}
+
+/**
+ * Name: CommandResponseCallback()
+ * Desc: Polls device for analog/digital input data and places
+ *		 it in the FIFO data structure shared with DASYLab
+**/
+void LabJackLayer::CommandResponseCallback()
+{
+	LJ_ERROR lngErrorcode;
+	int i;
+	double dblValue;
+
+	// TODO: Try to use PostMessage
+	
+	// Make requests for the channels that the experiment is reading
+	for(i=0; i<numAINRequested; i++)
+	{
+		lngErrorcode = AddRequest(lngHandle, LJ_ioGET_AIN, analogInputScanList[i], 0, 0, 0);
+		ErrorHandler(lngErrorcode);
+	}
+
+	for(i=0; i<numDIRequested; i++)
+	{
+		lngErrorcode = AddRequest(lngHandle, LJ_ioGET_DIGITAL_BIT, digitalInputScanList[i], 0, 0, 0);
+		ErrorHandler(lngErrorcode);
+	}
+
+	//Execute the requests.
+	lngErrorcode = GoOne(lngHandle);
+	ErrorHandler(lngErrorcode);
+
+	// Read back the results
+	for(i=0; i<numAINRequested; i++)
+	{
+		lngErrorcode = GetResult(lngHandle, LJ_ioGET_AIN, analogInputScanList[i], &dblValue);
+		ErrorHandler(lngErrorcode);
+		AddToInputBuffer(ConvertAIValue(dblValue, analogInputScanList[i])); // TODO: We ought to have a channel variable in here
+	}
+
+	for(i=0; i<numDIRequested; i++)
+	{
+		lngErrorcode = GetResult(lngHandle, LJ_ioGET_DIGITAL_BIT, digitalInputScanList[i], &dblValue);
+		ErrorHandler(lngErrorcode);
+		AddToInputBuffer((SAMPLE)dblValue);
+	}
+
+}
+
+/**
+ * Name: AddToInputBuffer(SAMPLE newValue)
+ * Desc: Adds a new reading to DASYLab's input buffer
+**/
+void LabJackLayer::AddToInputBuffer(SAMPLE newValue)
+{
+	// Feed channel value in FIFO buffer
+	inputBufferAdr[inputStoreIndex] = newValue;
+
+	// increment FIFO index and wrap around
+	inputStoreIndex++;
+	if (inputStoreIndex == infoStruct->DriverBufferSize)
+	{
+		inputStoreIndex = 0;
+		wrapAround = TRUE;
+	}
 }
