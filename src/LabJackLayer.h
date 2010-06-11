@@ -84,6 +84,7 @@ class LabJackLayer {
 		const static int MAX_SCANS_PER_SECOND = 50000;
 		UINT hTimerID;									// TODO: This might need to be static?
 		const static int START_STREAM_FREQUENCY = 20;	// Start streaming at 20 Hz
+		const static int HV_CHANNELS = 4;
 
 	public:
 		LabJackLayer(DRV_INFOSTRUCT * structAddress);

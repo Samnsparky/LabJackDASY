@@ -248,6 +248,8 @@ long LabJackLayer::GetError()
 **/
 void LabJackLayer::FillInfoStructure()
 {
+	int n;
+
 	// Frequency and features
 	infoStruct->Features = SUPPORT_DEFAULT | SUPPORT_OUT_ALL;
 	infoStruct->SupportedAcqModes = DRV_AQM_CONTINUOUS | DRV_AQM_STOP;
@@ -263,6 +265,18 @@ void LabJackLayer::FillInfoStructure()
 
 	// Set block size to 1 for most responsiveness
 	infoStruct->ADI_BlockSize = 1;
+
+	for (n = 0; n < 8; n++)
+	{
+		infoStruct->GainInfo[n] = GAIN_INFO[n];
+	}
+
+	for (n = 0; n < infoStruct->Max_AO_Channel; n++)
+	{
+		infoStruct->AO_ChInfo[n].OutputRange_Min = 0;
+		infoStruct->AO_ChInfo[n].OutputRange_Max = 5;
+		infoStruct->AO_ChInfo[n].Resolution = 16384;		/* == 12 Bit */
+	}
 
 	// Channel info?
 	//_fmemset (infoStruct->AI_ChInfo, 0, sizeof (infoStruct->AI_ChInfo));
@@ -295,10 +309,33 @@ void LabJackLayer::FillInfoStructure()
 **/
 void LabJackLayer::FillU3Info()
 {
+	double dblValue;
+
 	// TODO: These ought to be constants
 	infoStruct->Max_AI_Channel = 19; // LabJackLayer will map 16,17,18 to 30,31,32 respectively
 	infoStruct->Max_DI_Channel = 20; // User will need to manage which line is out/in
 	infoStruct->Max_DO_Channel = 20;
+
+	// Determine if a HV or LV is present
+	dblValue = 0;
+	eGet(lngHandle, LJ_ioGET_CONFIG, LJ_chU3HV, &dblValue, 0);
+	int n;
+	n = 0;
+	if(dblValue) // If HV
+		for (; n < HV_CHANNELS; n++) 
+		{
+			infoStruct->AI_ChInfo[n].InputRange_Max = 10;
+			infoStruct->AI_ChInfo[n].InputRange_Min = -10;
+			infoStruct->AI_ChInfo[n].Resolution = 65536;	  /* == 16 Bit */
+			infoStruct->AI_ChInfo[n].BaseUnit = DRV_BASE_UNIT_2COMP;
+		}
+	for (; n < infoStruct->Max_AI_Channel; n++)
+	{
+		infoStruct->AI_ChInfo[n].InputRange_Max = 0;
+		infoStruct->AI_ChInfo[n].InputRange_Min = 2.44;
+		infoStruct->AI_ChInfo[n].Resolution = 65536;	  /* == 16 Bit */
+		infoStruct->AI_ChInfo[n].BaseUnit = DRV_BASE_UNIT_2COMP;
+	}
 }
 
 /**
@@ -307,6 +344,7 @@ void LabJackLayer::FillU3Info()
 **/
 void LabJackLayer::FillU6Info()
 {
+	//double dblValue;
 	int n;
 
 	// TODO: These ought to be constants
@@ -314,24 +352,12 @@ void LabJackLayer::FillU6Info()
 	infoStruct->Max_DI_Channel = 23; // User will need to manage which line is out/in
 	infoStruct->Max_DO_Channel = 23;
 
-	for (n = 0; n < infoStruct->Max_AI_Channel; n++)
+	for (n=0; n < HV_CHANNELS; n++) 
 	{
 		infoStruct->AI_ChInfo[n].InputRange_Max = 10;
 		infoStruct->AI_ChInfo[n].InputRange_Min = -10;
 		infoStruct->AI_ChInfo[n].Resolution = 65536;	  /* == 16 Bit */
 		infoStruct->AI_ChInfo[n].BaseUnit = DRV_BASE_UNIT_2COMP;
-	}
-
-	for (n = 0; n < 8; n++)
-	{
-		infoStruct->GainInfo[n] = GAIN_INFO[n];
-	}
-
-	for (n = 0; n < infoStruct->Max_AO_Channel; n++)
-	{
-		infoStruct->AO_ChInfo[n].OutputRange_Min = 0;
-		infoStruct->AO_ChInfo[n].OutputRange_Max = 5;
-		infoStruct->AO_ChInfo[n].Resolution = 16384;		/* == 12 Bit */
 	}
 }
 
@@ -515,6 +541,10 @@ void LabJackLayer::BeginExperiment()
 	// store start time
 	startTime = GetCurrentTime();
 
+	// Check to see if any channels are being used
+	if (numAINRequested == 0 && numDIRequested == 0)
+		return;
+
 	// TODO: A more empirical approach to determining which mode would
 	//       be more efficient
 	// Start streaming / command response loop
@@ -587,11 +617,11 @@ bool LabJackLayer::ConfirmDataStructure()
 		return FALSE;
 	}
 	/* check if any channel is active */
-	if (numAINRequested == 0 && numDIRequested == 0)
+	/*if (numAINRequested == 0 && numDIRequested == 0)
 	{
 		infoStruct->Error = DRV_ERR_NOCHANNEL;
 		return FALSE;
-	}
+	}*/
 	/* check rate-parameters */
 	if (infoStruct->AI_Frequency > infoStruct->MaxFreq)
 	{
