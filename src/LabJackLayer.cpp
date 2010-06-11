@@ -352,7 +352,7 @@ void LabJackLayer::FillU6Info()
 	infoStruct->Max_DI_Channel = 23; // User will need to manage which line is out/in
 	infoStruct->Max_DO_Channel = 23;
 
-	for (n=0; n < HV_CHANNELS; n++) 
+	for (n=0; n < infoStruct->Max_AI_Channel; n++) 
 	{
 		infoStruct->AI_ChInfo[n].InputRange_Max = 10;
 		infoStruct->AI_ChInfo[n].InputRange_Min = -10;
@@ -367,11 +367,22 @@ void LabJackLayer::FillU6Info()
 **/
 void LabJackLayer::FillUE9Info()
 {
+	int n;
+
 	// TODO: These ought to be constants
 	infoStruct->Max_AI_Channel = 22; // LabJackLayer will map 16, 17, 18, 19, 20, 21 to
 									 // 128, 132, 133, 136, 140, 141 respectively
 	infoStruct->Max_DI_Channel = 23; // User will need to manage which line is out/in
 	infoStruct->Max_DO_Channel = 23;
+
+	// Put in the analog input ranges
+	for (n=0; n < infoStruct->Max_AI_Channel; n++) 
+	{
+		infoStruct->AI_ChInfo[n].InputRange_Max = 5;
+		infoStruct->AI_ChInfo[n].InputRange_Min = -5;
+		infoStruct->AI_ChInfo[n].Resolution = 65536;	  /* == 16 Bit */
+		infoStruct->AI_ChInfo[n].BaseUnit = DRV_BASE_UNIT_2COMP;
+	}
 }
 
 /**
