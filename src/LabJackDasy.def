@@ -38,3 +38,4 @@ EXPORTS
 	DRV_WriteCounterOutput			@34
 	DRV_WriteDigitalOutput			@35
 	DRV_InitDevice					@36
+	DlgCardDef						@37

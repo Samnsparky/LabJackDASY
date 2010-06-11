@@ -4,6 +4,7 @@
 	Version="7.10"
 	Name="LabJackDasy"
 	ProjectGUID="{AA720A17-6A12-4590-8104-1A77D5953CED}"
+	RootNamespace="LabJackDasy"
 	Keyword="MFCDLLProj">
 	<Platforms>
 		<Platform
@@ -130,9 +131,6 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
-				RelativePath=".\AboutDialog.cpp">
-			</File>
-			<File
 				RelativePath=".\DeviceSetupDialog.cpp">
 			</File>
 			<File
@@ -165,9 +163,6 @@
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}">
 			<File
-				RelativePath=".\AboutDialog.h">
-			</File>
-			<File
 				RelativePath=".\DeviceSetupDialog.h">
 			</File>
 			<File
@@ -177,7 +172,7 @@
 				RelativePath=".\LabJackLayer.h">
 			</File>
 			<File
-				RelativePath=".\Resource.h">
+				RelativePath=".\resource.h">
 			</File>
 			<File
 				RelativePath=".\stdafx.h">
@@ -188,20 +183,9 @@
 			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx"
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}">
 			<File
-				RelativePath=".\LabJackDasy.rc">
-			</File>
-			<File
-				RelativePath=".\res\LabJackDasy.rc2">
+				RelativePath=".\DriverSetup.rc">
 			</File>
 		</Filter>
-		<File
-			RelativePath=".\AboutDialog.htm"
-			DeploymentContent="TRUE">
-		</File>
-		<File
-			RelativePath=".\DeviceSetupDialog.htm"
-			DeploymentContent="TRUE">
-		</File>
 		<File
 			RelativePath="..\..\..\..\..\Program Files\LabJack\Drivers\labjackud.lib">
 		</File>
@@ -212,6 +196,6 @@
 	<Globals>
 		<Global
 			Name="RESOURCE_FILE"
-			Value="LabJackDasy.rc"/>
+			Value="DriverSetup.rc"/>
 	</Globals>
 </VisualStudioProject>

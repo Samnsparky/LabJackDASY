@@ -2,77 +2,82 @@
 //
 
 #include "stdafx.h"
-#include "LabJackDasy.h"
 #include "DeviceSetupDialog.h"
+#include ".\devicesetupdialog.h"
 
-//	LabJack
+// Application
+#include "LabJackDasy.h"
+
+// LabJack
 #include "c:\program files\labjack\drivers\LabJackUD.h" // TODO: needs to be flexible
 
 // DeviceSetupDialog dialog
 
-IMPLEMENT_DYNCREATE(DeviceSetupDialog, CDHtmlDialog)
-
-// TODO: This could require some clean up
+IMPLEMENT_DYNAMIC(DeviceSetupDialog, CDialog)
 DeviceSetupDialog::DeviceSetupDialog(CWnd* pParent /*=NULL*/)
-	: CDHtmlDialog(DeviceSetupDialog::IDD, DeviceSetupDialog::IDH, pParent)
+	: CDialog(DeviceSetupDialog::IDD, pParent)
 {
-	targetDeviceLayer = NULL;
+	CDialog(DeviceSetupDialog::IDD, pParent);
 }
 
 DeviceSetupDialog::~DeviceSetupDialog()
 {
-	delete targetDeviceLayer;
-}
-
-void DeviceSetupDialog::SetDeviceLayer(LabJackLayer* layer)
-{
-	targetDeviceLayer = layer;
 }
 
 void DeviceSetupDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDHtmlDialog::DoDataExchange(pDX);
+	CDialog::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_DEVICE_TYPE_COMBO, DeviceCombo);
 }
 
-BOOL DeviceSetupDialog::OnInitDialog()
-{
-	CDHtmlDialog::OnInitDialog();
-	return TRUE;  // return TRUE  unless you set the focus to a control
-}
 
-BEGIN_MESSAGE_MAP(DeviceSetupDialog, CDHtmlDialog)
+BEGIN_MESSAGE_MAP(DeviceSetupDialog, CDialog)
+	ON_BN_CLICKED(IDCANCEL, OnBnClickedCancel)
+	ON_BN_CLICKED(IDOK, OnBnClickedOk)
 END_MESSAGE_MAP()
-
-BEGIN_DHTML_EVENT_MAP(DeviceSetupDialog)
-DHTML_EVENT_ONCLICK(_T("ButtonOK"), OnButtonOK)
-DHTML_EVENT_ONCLICK(_T("ButtonCancel"), OnButtonCancel)
-END_DHTML_EVENT_MAP()
-
 
 
 // DeviceSetupDialog message handlers
 
-HRESULT DeviceSetupDialog::OnButtonOK(IHTMLElement* /*pElement*/)
+void DeviceSetupDialog::OnBnClickedCancel()
 {
-	// TODO: Do I need to delete this?
-	switch(((CComboBox *)GetDlgItem(IDC_DEVICECOMBO))->GetCurSel())
-	{
-		case 0:
-			targetDeviceLayer->SetDeviceType(LISTBOX_VALUE_1);
-			break;
-		case 1:
-			targetDeviceLayer->SetDeviceType(LISTBOX_VALUE_2);
-			break;
-		case 2:
-			targetDeviceLayer->SetDeviceType(LISTBOX_VALUE_3);
-			break;
-	}
-	CloseWindow();
-	return S_OK;  // return TRUE  unless you set the focus to a control
+	CDialog::OnCancel();
 }
 
-HRESULT DeviceSetupDialog::OnButtonCancel(IHTMLElement* /*pElement*/)
+void DeviceSetupDialog::OnBnClickedOk()
 {
-	CloseWindow();
-	return S_OK;  // return TRUE  unless you set the focus to a control
+	// Determine the device type selected
+	switch(DeviceCombo.GetCurSel())
+	{
+	case U3_COMBOBOX_INDEX:
+		OpenNewDevice(LJ_dtU3);
+		break;
+	case U6_COMBOBOX_INDEX:
+		OpenNewDevice(LJ_dtU6);
+		break;
+	case UE9_COMBOBOX_INDEX:
+		OpenNewDevice(LJ_dtUE9);
+		break;
+	}
+
+	CDialog::OnOK();
+}
+
+void DeviceSetupDialog::PopulateDeviceCombo()
+{
+	// Get the currently selected device type
+	long deviceType = GetDeviceType();
+
+	// TODO: This needs to have constants
+	DeviceCombo.ResetContent();
+	DeviceCombo.AddString("U3");
+	if (deviceType == LJ_dtU3)
+		DeviceCombo.SetCurSel(U3_COMBOBOX_INDEX);
+	DeviceCombo.AddString("U6");
+	if (deviceType == LJ_dtU6)
+		DeviceCombo.SetCurSel(U6_COMBOBOX_INDEX);
+	DeviceCombo.AddString("UE9");
+	if (deviceType == LJ_dtUE9)
+		DeviceCombo.SetCurSel(UE9_COMBOBOX_INDEX);
+	UpdateData(FALSE);
 }

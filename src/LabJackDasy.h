@@ -19,6 +19,8 @@ extern "C"
 {
 #endif 
 
+const int NONE_TYPE = -1; // No device type suitable
+
 /** Prototypes **/
 int _stdcall DRV_AdvanceAnalogOutputBuf();
 int _stdcall DRV_AdvanceCounterOutputBuf();
@@ -55,11 +57,30 @@ int _stdcall DRV_TestStruct();
 int _stdcall DRV_WriteAnalogOutput(UINT chan, DWORD outVal);
 int _stdcall DRV_WriteCounterOutput(UINT chan, DWORD outVal);
 int _stdcall DRV_WriteDigitalOutput(UINT chan, DWORD outVal);
+BOOL _stdcall DlgCardDef (HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam);
+long _stdcall GetDeviceType();
 
 // Helper functions not exported to DASYLab
 void StreamCallbackWrapper(long scansAvailable, double userValue);
 void CALLBACK CommandResponseCallbackWrapper(UINT uID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2);
+void OpenNewDevice(long newDeviceType);
 
 #ifdef  __cplusplus
 } // extern C
 #endif
+
+// CLabJackDasyApp . . . Thanks MFC
+// See LabJackDasy.cpp for the implementation of this class
+//
+
+class CLabJackDasyApp : public CWinApp
+{
+public:
+	CLabJackDasyApp();
+
+// Overrides
+public:
+	virtual BOOL InitInstance();
+
+	DECLARE_MESSAGE_MAP()
+};

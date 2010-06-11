@@ -1,45 +1,32 @@
-// TODO: We need better documentation in this Visual C++ generated file
 #pragma once
+#include "afxwin.h"
+#include "resource.h"
+#include <string>
 
-// Resource file
-#include "Resource.h"
+// DeviceSetupDialog dialog
 
-// Windows
-#include <afxwin.h>
-
-// LabJack Include
-#include "c:\program files\labjack\drivers\LabJackUD.h" // TODO: needs to be flexible
-
-// Application
-#include "LabJackLayer.h"
-
-class DeviceSetupDialog : public CDHtmlDialog
+class DeviceSetupDialog : public CDialog
 {
-
-	DECLARE_DYNCREATE(DeviceSetupDialog);
-
-	LabJackLayer * targetDeviceLayer;
+	DECLARE_DYNAMIC(DeviceSetupDialog)
+	const static int U3_COMBOBOX_INDEX = 0;
+	const static int U6_COMBOBOX_INDEX = 1;
+	const static int UE9_COMBOBOX_INDEX = 2;
 
 public:
-	DeviceSetupDialog(CWnd* pParent = NULL);
-	void SetDeviceLayer(LabJackLayer * layer);
+	DeviceSetupDialog(CWnd* pParent = NULL);   // standard constructor
 	virtual ~DeviceSetupDialog();
-// Overrides
-	HRESULT OnButtonOK(IHTMLElement *pElement);
-	HRESULT OnButtonCancel(IHTMLElement *pElement);
+	afx_msg void OnBnClickedCancel();
+	afx_msg void OnBnClickedOk();
+	void PopulateDeviceCombo();
 
 // Dialog Data
-	enum { IDD = IDD_DIALOG2, IDH = IDR_HTML_DEVICESETUPDIALOG };
-
-private:
-	const static int LISTBOX_VALUE_1 = LJ_dtU3;
-	const static int LISTBOX_VALUE_2 = LJ_dtU6;
-	const static int LISTBOX_VALUE_3 = LJ_dtUE9;
+	enum { IDD = IDD_DEVICE_DIALOG };
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	virtual BOOL OnInitDialog();
 
 	DECLARE_MESSAGE_MAP()
-	DECLARE_DHTML_EVENT_MAP()
+
+private:
+	CComboBox DeviceCombo;
 };

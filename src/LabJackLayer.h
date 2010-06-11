@@ -86,7 +86,7 @@ class LabJackLayer {
 		const static int START_STREAM_FREQUENCY = 20;	// Start streaming at 20 Hz
 
 	public:
-		LabJackLayer(DRV_INFOSTRUCT * structAddress, long newDeviceType);
+		LabJackLayer(DRV_INFOSTRUCT * structAddress);
 		//~LabJackLayer(void);
 		void AdvanceInputBuf();
 		void AdvanceAnalogOutputBuf();
@@ -116,9 +116,11 @@ class LabJackLayer {
 		void CommandResponseCallback();
 		void WriteDigitalOutput(UINT chan, DWORD outVal);
 		void WriteDAC(UINT chan, DWORD outVal);
+		void OpenDevice(long deviceType); // TODO: This is bad form
+		long GetDeviceType();
 
 	private:
-		void FillinfoStructure();
+		void FillInfoStructure();
 		void FillU3Info();
 		void FillU6Info();
 		void FillUE9Info();

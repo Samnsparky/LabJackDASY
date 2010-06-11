@@ -7,6 +7,9 @@
  *		 and simplifies interactions with DASYLab
 **/
 
+// Allow us to access the MFC hInstance
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+
 /** Disable warnings in Win32 headers **/
 #pragma warning ( disable : 4115 )  // named type definition in parentheses
 #pragma warning ( disable : 4201 )  // Nameless struct/union
@@ -28,6 +31,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <stdio.h>
+//#include <afxwin.h>
 
 //	Compiler
 #include <float.h>
@@ -45,7 +49,6 @@
 //	Application
 #include "LabJackDasy.h"
 #include "LabJackLayer.h"
-#include "AboutDialog.h"
 #include "DeviceSetupDialog.h"
 
 //	LabJack
@@ -56,11 +59,12 @@
 LabJackLayer * deviceLayer;
 const char DRIVER_NAME [] = "LabJackDASY";
 const char DASY_DRIVER_VERSION [] = "0.1//05.10";	// Version/Date as required by DASYLab
-const double DEFAULT_FREQUENCY = 10;		// The default frequency for input (Hz)
-const DWORD DEFAULT_BLOCK_SIZE = 4;			// The default size allocated for readings (bytes)
-//DeviceSetupDialog * deviceDialog;
-DWORD StartTime;							// for start time of measure
-HANDLE hInst = NULL;						// handle to previous WINDOWS-instance
+const double DEFAULT_FREQUENCY = 10;				// The default frequency for input (Hz)
+const DWORD DEFAULT_BLOCK_SIZE = 4;					// The default size allocated for readings (bytes)
+DWORD StartTime;									// for start time of measure
+HINSTANCE hInst = NULL;								// handle to previous WINDOWS-instance
+DRV_INFOSTRUCT * infoStruct;						// Pointer to DASYLab's information structure
+//DriverSetupWindow setupDialog;
 
 /**
  * Name: DllMain( HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved )
@@ -96,6 +100,7 @@ HANDLE hInst = NULL;						// handle to previous WINDOWS-instance
 //
 //	return TRUE;
 //}
+// NOTE: MFC entry points and object placed below
 
 extern "C" 
 {
@@ -312,8 +317,15 @@ DRV_MEASINFO * _stdcall DRV_GetMeasInfoEx()
  * Name: DRV_InitDevice()
  * Desc: Creates a new LabJackLayer with the given DASYLab information structure
 **/
-int _stdcall DRV_InitDevice(DRV_INFOSTRUCT *infoStruct)
+int _stdcall DRV_InitDevice(DRV_INFOSTRUCT *newInfoStruct)
 {
+	int hold;
+	
+	infoStruct = newInfoStruct;
+	
+	// Create the layer but do not open the device
+	deviceLayer = new LabJackLayer(newInfoStruct);
+
 	// Define the driver identification information not related to the device
 	_fstrcpy(infoStruct->DriverName, DRIVER_NAME);
 	_fstrcpy(infoStruct->DLL_Version, DASY_DRIVER_VERSION);
@@ -323,14 +335,33 @@ int _stdcall DRV_InitDevice(DRV_INFOSTRUCT *infoStruct)
 	// Set experiment defaults
 	infoStruct->AI_Frequency = DEFAULT_FREQUENCY;
 	infoStruct->ADI_BlockSize = DEFAULT_BLOCK_SIZE;
-	
-	// Create the device layer and buffer, allowing the device layer to set the
-	// hardware specific information
-	deviceLayer = new LabJackLayer(infoStruct, LJ_dtU6); // TODO: Let user choose device type (!)
-	
-	// Create setup dialog 
-	//deviceDialog = new DeviceSetupDialog(NULL);
-	//deviceDialog->SetDeviceLayer(deviceLayer);
+
+	// Find first available device
+	long numDevices = 0;
+	long targetDeviceType = 0;
+	long serialNumbers [128];
+	long ids [128];
+	double addresses [128];
+
+	// TODO: Might be a better way to do this?
+	ListAll(LJ_dtU3, LJ_ctUSB, &numDevices, &serialNumbers[0], &ids[0], &addresses[0]);
+	targetDeviceType = NONE_TYPE;
+	if(numDevices > 0)
+		targetDeviceType = LJ_dtU3;
+	ListAll(LJ_dtU6, LJ_ctUSB, &numDevices, &serialNumbers[0], &ids[0], &addresses[0]);
+	if(numDevices > 0)
+		targetDeviceType = LJ_dtU6;
+	ListAll(LJ_dtUE9, LJ_ctUSB, &numDevices, &serialNumbers[0], &ids[0], &addresses[0]);
+	if(numDevices > 0)
+		targetDeviceType = LJ_dtUE9;
+	if(targetDeviceType == NONE_TYPE)
+	{
+		newInfoStruct->Error = LJE_LABJACK_NOT_FOUND;
+		return DRV_FUNCTION_FALSE;
+	}
+
+	// Open the device
+	deviceLayer->OpenDevice(targetDeviceType);
 
 	// Return value according to errors generated
 	if (deviceLayer->GetError())
@@ -349,7 +380,7 @@ int _stdcall DRV_KillDevice()
 	{
 		deviceLayer->CleanUp();
 		//_CrtDumpMemoryLeaks();
-		//delete deviceLayer;
+		delete deviceLayer;
 		//_CrtDumpMemoryLeaks();
 		//delete deviceDialog;
 		return DRV_FUNCTION_OK;
@@ -482,21 +513,22 @@ int _stdcall DRV_SetScanList(UINT scanListLength, UINT scanListMaxGroupSize, SCA
 
 int _stdcall DRV_ShowDialog(UINT boxNum, DWORD extraPara)
 {
-	switch(boxNum)
-	{
-	case DRV_DLG_ABOUT:
-	{
-		// NOTE: Using block here becuase of the AboutDialog instance
-		AboutDialog aboutDialog;
-		aboutDialog.ShowWindow(SW_SHOW);
-		aboutDialog.UpdateWindow();
-		break;
-	}
-	case DRV_DLG_CARD_DEF:
-		//deviceDialog->ShowWindow(SW_SHOW);
-		//deviceDialog->UpdateWindow();
-		break;
-	}
+	DeviceSetupDialog*wnd;
+	CWnd * parent;
+	FARPROC lpProc;
+	HWND hWnd;
+
+	// Ugly code thanks to SP1 :(
+	AFX_MANAGE_STATE(AfxGetStaticModuleState( ));
+
+	// get actual window
+	hWnd = GetActiveWindow();
+	parent = CWnd::FromHandle(hWnd);
+	wnd = new DeviceSetupDialog();
+	wnd->Create(IDD_DEVICE_DIALOG, parent); 
+	wnd->PopulateDeviceCombo();
+	wnd->ShowWindow(SW_SHOW);
+	//m_pMainWnd = wnd;
 
 	return DRV_FUNCTION_OK;
 }
@@ -509,6 +541,8 @@ int _stdcall DRV_ShowError()
 {
 	char err[255];
 
+	// TODO: DASYLab errors are unlikely
+	//		 but should be handled separately
 	ErrorToString(deviceLayer->GetError(), err);
 
 	MessageBox (GetActiveWindow (), err, "LabJack Error", MB_OK | MB_ICONSTOP);
@@ -615,4 +649,106 @@ void StreamCallbackWrapper(long scansAvailable, double userValue)
 void CALLBACK CommandResponseCallbackWrapper(UINT uID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2)
 {
 	deviceLayer->CommandResponseCallback();
+}
+
+/**
+ * Name: DlgCardDef (HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam)
+ * Desc: administration of dialog
+ * Note: This is basically copied from DASYLab's example driver
+**/
+BOOL CALLBACK DlgCardDef (HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	switch (message)
+	{
+	case WM_INITDIALOG:
+		return TRUE;
+
+	case WM_COMMAND:
+		{			 
+			UINT cmd_id  = GET_WM_COMMAND_ID (wParam,lParam);
+			UINT cmd_cmd = GET_WM_COMMAND_CMD (wParam,lParam);
+
+			switch (cmd_id)
+			{
+			case IDOK:
+				EndDialog (hWndDlg, cmd_id);
+				return TRUE;
+			case IDCANCEL:
+				EndDialog (hWndDlg, cmd_id);
+				return TRUE;
+			default:
+				break;
+			}
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	UNUSED(lParam);
+
+	return FALSE;
+}
+
+/**
+ * Name: OpenNewDevice(long newDeviceType)
+ * Desc: Creates a new device layer for the given device type
+ *		 and closes any open device layers
+**/
+void OpenNewDevice(long newDeviceType)
+{
+	// TODO: There might be a bug (?) in DASYLab that
+	//		 does not let the following occur
+	//if(deviceLayer != NULL)
+	//	if (deviceLayer->IsOpen())
+	//	{
+	//		deviceLayer->CleanUp();
+	//		delete deviceLayer;
+	//	}
+
+	//// Create the device layer and buffer, allowing the device layer to set the
+	//// hardware specific information
+	//deviceLayer = new LabJackLayer(infoStruct, newDeviceType);
+	
+	// TODO: This is bad bad form
+	deviceLayer->OpenDevice(newDeviceType);
+}
+
+/**
+ * Name: GetDeviceType()
+ * Desc: Returns the device type curently in use by
+ *		 the LabJackLayer
+**/
+long _stdcall GetDeviceType()
+{
+	return deviceLayer->GetDeviceType();
+}
+
+/* MFC Required Portions . . . thanks MFC */
+BEGIN_MESSAGE_MAP(CLabJackDasyApp, CWinApp)
+END_MESSAGE_MAP()
+
+
+// CLabJackDasyApp construction
+
+CLabJackDasyApp::CLabJackDasyApp()
+{
+	// TODO: add construction code here,
+	// Place all significant initialization in InitInstance
+}
+
+
+// The one and only CLabJackDasyApp object
+
+CLabJackDasyApp theApp;
+
+
+// CLabJackDasyApp initialization
+
+BOOL CLabJackDasyApp::InitInstance()
+{
+	CWinApp::InitInstance();
+
+	return TRUE;
 }

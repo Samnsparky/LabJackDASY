@@ -41,7 +41,7 @@ using namespace std;
  * Desc: Constructor for LabJackLayer that saves the given DASYLab structure to infoStruct
  * Args: StructAddress, the address of the DASYLab infoStruct
 **/
-LabJackLayer::LabJackLayer(DRV_INFOSTRUCT * structAddress, long newDeviceType)
+LabJackLayer::LabJackLayer(DRV_INFOSTRUCT * structAddress)
 {
 	// Put in some default values
 	aiRetrieveIndex = 0;
@@ -52,15 +52,10 @@ LabJackLayer::LabJackLayer(DRV_INFOSTRUCT * structAddress, long newDeviceType)
 	open = FALSE;
 	measRun = FALSE;
 	isStreaming = FALSE;
+	open = FALSE;
 
 	// Save the structure address and device type
 	infoStruct = structAddress;
-	deviceType = newDeviceType;
-
-	// Open the LabJack and create buffer
-	infoStruct->Error = OpenLabJack (deviceType, LJ_ctUSB, "1", 1, &lngHandle); // U6, UE9
-	if (!infoStruct->Error && AllocateInputBuffer (DEFAULT_BUFFER_SIZE)) 
-		open = TRUE;
 	
 	// Fill gains
 	// TODO: This is horribly inefficient and inaccurate (0.1)
@@ -74,14 +69,13 @@ LabJackLayer::LabJackLayer(DRV_INFOSTRUCT * structAddress, long newDeviceType)
 	GAIN_INFO[7] = 4;
 	GAIN_INFO[8] = 4;
 
-	// Fill the information structure
-	FillinfoStructure();
-
 	// Issue 4: Command-response does not work until the experiment is started for a second time.
 	// TODO: This is a somewhat dirty fix that, if possible, should be addressed with timer
 	//		 configuration changes. (0.2)
     InstallTimerInterruptHandler();
 	RemoveTimerInterruptHandler();
+
+	SetError(0);
 }
 
 /**
@@ -249,10 +243,10 @@ long LabJackLayer::GetError()
 }
 
 /**
- * Name: FillinfoStructure()
+ * Name: FillInfoStructure()
  * Desc: (private) fill the information structure with hardware specific information
 **/
-void LabJackLayer::FillinfoStructure()
+void LabJackLayer::FillInfoStructure()
 {
 	// Frequency and features
 	infoStruct->Features = SUPPORT_DEFAULT | SUPPORT_OUT_ALL;
@@ -771,7 +765,7 @@ SAMPLE LabJackLayer::ConvertAIValue(double value, UINT channel)
 	double inputRange = infoStruct->AI_ChInfo[channel].InputRange_Max - infoStruct->AI_ChInfo[channel].InputRange_Min;
 	double bitsAvailable = sizeof(SAMPLE) * 8;
 	double maxValue = pow(2.0, bitsAvailable-1);
-	double conversionFactor = (maxValue / inputRange); // Multiply by 2 to get unsigned max
+	double conversionFactor = (maxValue / inputRange);
 	return (SAMPLE) (conversionFactor * value);
 }
 
@@ -1131,4 +1125,37 @@ double LabJackLayer::ConvertAOValue(DWORD value, UINT channel)
 	double maxValue = pow(2.0, bitsAvailable-1);
 	double conversionFactor = (maxValue * 2.0 / inputRange); // Multiply by 2 to get both negative and positive values
 	return value / conversionFactor;
+}
+
+/**
+ * Name: OpenDevice(long deviceType)
+ * Desc: Closes the current device (if any) and opens the  
+ *		 device of the given type.
+**/
+void LabJackLayer::OpenDevice(long newDeviceType)
+{
+	if(open)
+		Close();
+
+	// Open the LabJack and create buffer
+	infoStruct->Error = OpenLabJack (newDeviceType, LJ_ctUSB, "1", 1, &lngHandle);
+	if (!infoStruct->Error && AllocateInputBuffer (DEFAULT_BUFFER_SIZE)) 
+		open = TRUE;
+
+	// Save the device type
+	deviceType = newDeviceType;
+
+	// Reset the InfoStructure
+	// Fill the information structure
+	FillInfoStructure();
+}
+
+/**
+ * Name: GetDeviceType()
+ * Desc: Returns the device type of the device currently
+		 in operation
+**/
+long LabJackLayer::GetDeviceType()
+{
+	return deviceType;
 }
