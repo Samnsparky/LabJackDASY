@@ -769,7 +769,7 @@ void LabJackLayer::ErrorHandler (LJ_ERROR lngErrorcode)
 {
 	if (lngErrorcode != LJE_NOERROR)
 	{
-		infoStruct->Error = lngErrorcode;
+		SetError(lngErrorcode);
 		DRV_ShowError();
 	}
 }
@@ -876,13 +876,15 @@ LPSAMPLE LabJackLayer::AllocLockedMem (DWORD nSamples, DRV_INFOSTRUCT * infoStru
 
 /**
  * Name: SetError(DWORD newError)
- * Desc: Allows client to set the error state of DASYLab's
- *		 InfoStruct directly.
+ * Desc: Sets the information structure to a LabJack error
  * Note: This borders on a bad practice and should be avoided
 **/
 void LabJackLayer::SetError(DWORD newError)
 {
-	infoStruct->Error = newError;
+	if(newError > 0)
+		infoStruct->Error = newError + LABJACK_ERROR_PREFIX;
+	else
+		infoStruct->Error = 0;
 }
 
 /**
@@ -1179,8 +1181,31 @@ void LabJackLayer::OpenDevice(long newDeviceType)
 		Close();
 
 	// Open the LabJack and create buffer
-	infoStruct->Error = OpenLabJack (newDeviceType, LJ_ctUSB, "1", 1, &lngHandle);
-	if (!infoStruct->Error && AllocateInputBuffer (DEFAULT_BUFFER_SIZE)) 
+	SetError(OpenLabJack (newDeviceType, LJ_ctUSB, "1", 1, &lngHandle));
+	if (!GetError() && AllocateInputBuffer (DEFAULT_BUFFER_SIZE)) 
+		open = TRUE;
+
+	// Save the device type
+	deviceType = newDeviceType;
+
+	// Reset the InfoStructure
+	// Fill the information structure
+	FillInfoStructure();
+}
+
+/**
+ * Name: OpenDeviceByEthernet(long deviceType, char * )
+ * Desc: Closes the current device (if any) and opens the  
+ *		 device of the given type via ethernet at the given address
+**/
+void LabJackLayer::OpenEthernetDevice(long newDeviceType, CString address)
+{
+	if(open)
+		Close();
+
+	// Open the LabJack and create buffer
+	SetError(OpenLabJack (newDeviceType, LJ_ctETHERNET, address.GetBuffer(0), 1, &lngHandle));
+	if (!GetError() && AllocateInputBuffer (DEFAULT_BUFFER_SIZE)) 
 		open = TRUE;
 
 	// Save the device type
@@ -1194,9 +1219,19 @@ void LabJackLayer::OpenDevice(long newDeviceType)
 /**
  * Name: GetDeviceType()
  * Desc: Returns the device type of the device currently
-		 in operation
+ *		 in operation
 **/
 long LabJackLayer::GetDeviceType()
 {
 	return deviceType;
+}
+
+/**
+ * Name: IsUsingEthernet()
+ * Desc: Returns true if the device is in use through ethernet
+ *		 or false otherwise
+**/
+bool LabJackLayer::IsUsingEthernet()
+{
+	return false;
 }

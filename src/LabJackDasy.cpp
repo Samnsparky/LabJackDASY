@@ -356,8 +356,9 @@ int _stdcall DRV_InitDevice(DRV_INFOSTRUCT *newInfoStruct)
 		targetDeviceType = LJ_dtUE9;
 	if(targetDeviceType == NONE_TYPE)
 	{
-		newInfoStruct->Error = LJE_LABJACK_NOT_FOUND;
-		return DRV_FUNCTION_FALSE;
+		deviceLayer->SetError(LJE_LABJACK_NOT_FOUND);
+		DRV_ShowError();
+		//return DRV_FUNCTION_FALSE;
 	}
 
 	// Open the device
@@ -365,9 +366,11 @@ int _stdcall DRV_InitDevice(DRV_INFOSTRUCT *newInfoStruct)
 
 	// Return value according to errors generated
 	if (deviceLayer->GetError())
-		return DRV_FUNCTION_FALSE;
-	else
-		return DRV_FUNCTION_OK;
+		DRV_ShowError();
+		//return DRV_FUNCTION_FALSE;
+	//else
+	return DRV_FUNCTION_OK;
+	// Force to return OK for ethernet purposes
 }
 
 /**
@@ -541,11 +544,16 @@ int _stdcall DRV_ShowError()
 {
 	char err[255];
 
-	// TODO: DASYLab errors are unlikely
-	//		 but should be handled separately
-	ErrorToString(deviceLayer->GetError(), err);
-
-	MessageBox (GetActiveWindow (), err, "LabJack Error", MB_OK | MB_ICONSTOP);
+	if(deviceLayer->GetError() > LabJackLayer::LABJACK_ERROR_PREFIX)
+	{
+		ErrorToString(deviceLayer->GetError()-5000, err);
+		MessageBox (GetActiveWindow (), err, "LabJack Error", MB_OK | MB_ICONSTOP);
+	}
+	else
+	{
+		sprintf(err, "DASYLab error number %i", deviceLayer->GetError());
+		MessageBox (GetActiveWindow (), err, "DASYLab Error", MB_OK | MB_ICONSTOP);
+	}
 	deviceLayer->SetError(0);
 
 	return DRV_FUNCTION_OK;
@@ -716,13 +724,33 @@ void OpenNewDevice(long newDeviceType)
 }
 
 /**
+ * Name: OpenNewEthernetDevice
+ * Desc: Instructs the device layer to open a device of deviceType
+ *		 via ethernet at the given address
+**/
+void OpenNewEthernetDevice(long newDeviceType, CString adr)
+{
+	deviceLayer->OpenEthernetDevice(newDeviceType, adr);
+}
+
+/**
  * Name: GetDeviceType()
  * Desc: Returns the device type curently in use by
  *		 the LabJackLayer
 **/
-long _stdcall GetDeviceType()
+long GetDeviceType()
 {
 	return deviceLayer->GetDeviceType();
+}
+
+/**
+ * Name: IsUsingEthernet()
+ * Desc: Returns true if the device is connected by ethernet
+ *		 or false otherwise.
+**/
+bool IsUsingEthernet()
+{
+	return deviceLayer->IsUsingEthernet();
 }
 
 /* MFC Required Portions . . . thanks MFC */

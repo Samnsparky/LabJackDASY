@@ -58,12 +58,14 @@ int _stdcall DRV_WriteAnalogOutput(UINT chan, DWORD outVal);
 int _stdcall DRV_WriteCounterOutput(UINT chan, DWORD outVal);
 int _stdcall DRV_WriteDigitalOutput(UINT chan, DWORD outVal);
 BOOL _stdcall DlgCardDef (HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lParam);
-long _stdcall GetDeviceType();
 
 // Helper functions not exported to DASYLab
 void StreamCallbackWrapper(long scansAvailable, double userValue);
 void CALLBACK CommandResponseCallbackWrapper(UINT uID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2);
 void OpenNewDevice(long newDeviceType);
+void OpenNewEthernetDevice(long newDeviceType, CString value);
+long GetDeviceType();
+bool IsUsingEthernet();
 
 #ifdef  __cplusplus
 } // extern C

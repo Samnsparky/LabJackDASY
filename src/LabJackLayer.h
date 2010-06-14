@@ -119,6 +119,13 @@ class LabJackLayer {
 		void WriteDAC(UINT chan, DWORD outVal);
 		void OpenDevice(long deviceType); // TODO: This is bad form
 		long GetDeviceType();
+		bool IsUsingEthernet();
+		void OpenEthernetDevice(long newDeviceType, CString value);
+
+		// Public constants
+		const static int LABJACK_ERROR_PREFIX = 5000;	// Starting error number so that DASYLab does
+														// not confuse LabJack errors with its internal
+														// errors
 
 	private:
 		void FillInfoStructure();

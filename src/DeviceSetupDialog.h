@@ -2,6 +2,7 @@
 #include "afxwin.h"
 #include "resource.h"
 #include <string>
+#include "afxcmn.h"
 
 // DeviceSetupDialog dialog
 
@@ -29,4 +30,13 @@ protected:
 
 private:
 	CComboBox DeviceCombo;
+	void SetEthernetControl(bool showCheckbox, bool showIPEntry);
+public:
+	CEdit ipEntry;
+	CStatic ethernetLabel;
+	CButton ethernetCheck;
+	CStatic ipAddressLabel;
+	afx_msg void OnCbnSelchangeDeviceTypeCombo();
+	afx_msg void OnBnClickedEthernetCheck();
+	afx_msg void OnEnChangeIpEntry();
 };
