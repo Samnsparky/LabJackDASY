@@ -539,8 +539,6 @@ void LabJackLayer::SetDeviceType(int type)
  **/
 void LabJackLayer::BeginExperiment()
 {
-	debugFile.open("C:\\Documents and Settings\\Owner\\Desktop\\DasyLabTest\\sample1.txt");
-
 	// Check that the device is capable of the desired frequency
 	if(!IsFrequencyValid())
 	{
@@ -591,8 +589,6 @@ void LabJackLayer::BeginExperiment()
 void LabJackLayer::StopExperiment()
 {
 	long lngErrorcode;
-
-	debugFile.close();
 
 	if(isStreaming)
 	{
@@ -830,7 +826,6 @@ SAMPLE LabJackLayer::ConvertAIValue(double value, UINT channel)
 
 	// TODO: This is a really unacceptable excuse for shuffling data around
 	// Calculate range
-	debugFile << value << "\n";
 	double inputRange = infoStruct->AI_ChInfo[channel].InputRange_Max - infoStruct->AI_ChInfo[channel].InputRange_Min;
 	double bitsAvailable = sizeof(SAMPLE) * 8;
 
@@ -1224,10 +1219,10 @@ void LabJackLayer::OpenDevice(long newDeviceType)
 	// Save the device type
 	deviceType = newDeviceType;
 
-	// Get the cal constants
-	long pCalMem = (long)&calConstants[0];
-	lngErrorcode = eGet(lngHandle, LJ_ioGET_CONFIG, LJ_chCAL_CONSTANTS, 0, pCalMem);
-    ErrorHandler(lngErrorcode);
+	// Get the cal constants TODO: check size of array for UE9
+	//long pCalMem = (long)&calConstants[0];
+	//lngErrorcode = eGet(lngHandle, LJ_ioGET_CONFIG, LJ_chCAL_CONSTANTS, 0, pCalMem);
+    //ErrorHandler(lngErrorcode);
 
 	// Reset the InfoStructure
 	// Fill the information structure
@@ -1290,7 +1285,8 @@ void LabJackLayer::ConfigureRange()
 	{
 		//infoStruct->AI_ChInfo[n].InputRange_Max = CalMaxAIValue(n);
 		//infoStruct->AI_ChInfo[n].InputRange_Min = CalMinAIValue(n);
-		lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_AIN_RANGE, n, infoStruct->GainInfo[infoStruct->AI_ChSetup[n].GainCode], 0, 0);
+		long udRange = ConvertToUDRange(infoStruct->GainInfo[infoStruct->AI_ChSetup[n].GainCode]);
+		lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_AIN_RANGE, n, udRange, 0, 0);
 		ErrorHandler(lngErrorcode);
 	}
 }
