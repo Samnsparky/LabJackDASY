@@ -147,12 +147,18 @@ int _stdcall DRV_AdvanceInputBuf()
 }
 
 /**
- * Name: DRV_ExplainGainCode()
- * Desc: Returns a string explanation of the given range for the given channel and code
+ * Name: DRV_ExplainGainCode(SCAN_ENTRY chan, UINT gainIndex)
+ * Desc: Returns a string explanation of the given range for the given channel and index
 **/
-char* _stdcall DRV_ExplainGainCode(SCAN_ENTRY chan, UINT gainCode)
+char* _stdcall DRV_ExplainGainCode(SCAN_ENTRY chan, UINT gainIndex)
 {
 	UNUSED (chan);
+
+	long gainCode, dasyLabGainCode;
+
+	dasyLabGainCode = infoStruct->GainInfo[gainIndex];
+
+	gainCode = deviceLayer->ConvertToUDRange(dasyLabGainCode);
 
 	// Explain the gain code according to the range constant it represents
 	// TODO: There ought to be a more graceful way to do this?

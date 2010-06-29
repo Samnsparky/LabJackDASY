@@ -12,6 +12,9 @@
 #include <windowsx.h>
 #include <stdio.h>
 
+// File
+#include <fstream>
+
 //	Compiler
 #include <float.h>
 #include <math.h>
@@ -21,6 +24,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <mmsystem.h>
+#include <map>
 
 //	DASYLab driver interface
 #include "treiber.h"
@@ -32,8 +36,25 @@
 **/
 #ifndef LABJACKLAYER_H
 #define LABJACKLAYER_H
+
+using namespace std;
+
+typedef std::map <long, int> calMapType;
+
 class LabJackLayer {
-	
+		
+		// Constants
+		const static int START_STREAM_FREQUENCY = 20;	// Start streaming at 20 Hz
+		const static int HV_CHANNELS = 4;
+		const static int MAX_SCANS_PER_SECOND = 50000;
+		const static DWORD DEFAULT_BUFFER_SIZE = 4096;	// Default buffer size (bytes)
+		const static int ANALOG = 1;
+		const static int DIGITAL = 2;
+		const static int MAX_BIT_VALUE = 65534;
+		const static int MIN_BIT_VALUE = 0;
+		const static int CHANNEL_RESOLUTION = 32768;
+
+		// Instance variables
 		DWORD aoStoreIndex;								// The index of the next available position for analog ouput in
 														// DASYLab's buffer
 		DWORD doStoreIndex;								// The index of the next available position for digital output
@@ -76,15 +97,15 @@ class LabJackLayer {
 		int digitalInputScanList[32];					// list of digital channel numbers to acquire
 		int smallestChannelType;						// ANALOG or DIGITAL
 														// TODO: This ought to be an enumerated type :)
-
-		const static DWORD DEFAULT_BUFFER_SIZE = 4096;	// Default buffer size (bytes)
-		const static int ANALOG = 1;
-		const static int DIGITAL = 2;
+		double calConstants[64];
 		short GAIN_INFO[8];								// TODO: Need config
-		const static int MAX_SCANS_PER_SECOND = 50000;
 		UINT hTimerID;									// TODO: This might need to be static?
-		const static int START_STREAM_FREQUENCY = 20;	// Start streaming at 20 Hz
-		const static int HV_CHANNELS = 4;
+		calMapType posSlopeConstLocations;				// Maps LabJack range values to their locations in the cal constants
+		calMapType negSlopeConstLocations;	
+		calMapType centerConstLocations;
+		calMapType dasyLJGainCodes;						// Maps a DASYLab "real gain" to the gain code used by the UD driver
+		double debugValue;
+		ofstream debugFile;
 
 	public:
 		LabJackLayer(DRV_INFOSTRUCT * structAddress);
@@ -121,6 +142,7 @@ class LabJackLayer {
 		long GetDeviceType();
 		bool IsUsingEthernet();
 		void OpenEthernetDevice(long newDeviceType, CString value);
+		long ConvertToUDRange(long dasyLabRangeCode);
 
 		// Public constants
 		const static int LABJACK_ERROR_PREFIX = 5000;	// Starting error number so that DASYLab does
@@ -145,6 +167,11 @@ class LabJackLayer {
 		bool InstallTimerInterruptHandler();
 		void RemoveTimerInterruptHandler();
 		void AddToInputBuffer(SAMPLE newValue);
+		void AddToInputBuffer(SAMPLE * newValue);
 		double ConvertAOValue(DWORD value, UINT channel);
+		void ConfigureRange();
+		//void MapCalConstants();
+		double CalMaxAIValue(int channel);
+		double CalMinAIValue(int channel);
 };
 #endif

@@ -43,6 +43,8 @@ using namespace std;
 **/
 LabJackLayer::LabJackLayer(DRV_INFOSTRUCT * structAddress)
 {
+	debugValue = (MAX_BIT_VALUE/2.0);
+
 	// Put in some default values
 	aiRetrieveIndex = 0;
 	wrapAround = FALSE;
@@ -56,18 +58,6 @@ LabJackLayer::LabJackLayer(DRV_INFOSTRUCT * structAddress)
 
 	// Save the structure address and device type
 	infoStruct = structAddress;
-	
-	// Fill gains
-	// TODO: This is horribly inefficient and inaccurate (0.1)
-	GAIN_INFO[0] = -2;
-	GAIN_INFO[1] = 1;
-	GAIN_INFO[2] = 2;
-	GAIN_INFO[3] = 4;
-	GAIN_INFO[4] = 4;
-	GAIN_INFO[5] = 4;
-	GAIN_INFO[6] = 4;
-	GAIN_INFO[7] = 4;
-	GAIN_INFO[8] = 4;
 
 	// Issue 4: Command-response does not work until the experiment is started for a second time.
 	// TODO: This is a somewhat dirty fix that, if possible, should be addressed with timer
@@ -249,6 +239,10 @@ long LabJackLayer::GetError()
 void LabJackLayer::FillInfoStructure()
 {
 	int n;
+	calMapType::iterator calIt;
+
+	// Map the calibration constants
+	//MapCalConstants();
 
 	// Frequency and features
 	infoStruct->Features = SUPPORT_DEFAULT | SUPPORT_OUT_ALL;
@@ -266,16 +260,11 @@ void LabJackLayer::FillInfoStructure()
 	// Set block size to 1 for most responsiveness
 	infoStruct->ADI_BlockSize = 1;
 
-	for (n = 0; n < 8; n++)
-	{
-		infoStruct->GainInfo[n] = GAIN_INFO[n];
-	}
-
 	for (n = 0; n < infoStruct->Max_AO_Channel; n++)
 	{
 		infoStruct->AO_ChInfo[n].OutputRange_Min = 0;
 		infoStruct->AO_ChInfo[n].OutputRange_Max = 5;
-		infoStruct->AO_ChInfo[n].Resolution = 16384;		/* == 12 Bit */
+		infoStruct->AO_ChInfo[n].Resolution = CHANNEL_RESOLUTION;		/* == 12 Bit */
 	}
 
 	// Channel info?
@@ -294,12 +283,21 @@ void LabJackLayer::FillInfoStructure()
 		case LJ_dtU3:
 			FillU3Info();
 			break;
-		case LJ_dtU6:
-			FillU6Info();
-			break;
 		case LJ_dtUE9:
 			FillUE9Info();
 			break;
+		case LJ_dtU6:
+			FillU6Info();
+			break;
+	}
+
+	// Put gains into the information structure
+	// TODO: Might be a nicer way to do this?
+	n = 0;
+	for ( calIt=dasyLJGainCodes.begin() ; calIt != dasyLJGainCodes.end(); calIt++ )
+	{
+		infoStruct->GainInfo[n] = calIt->first;
+		n++;
 	}
 }
 
@@ -310,6 +308,7 @@ void LabJackLayer::FillInfoStructure()
 void LabJackLayer::FillU3Info()
 {
 	double dblValue;
+	int n=0;
 
 	// TODO: These ought to be constants
 	infoStruct->Max_AI_Channel = 19; // LabJackLayer will map 16,17,18 to 30,31,32 respectively
@@ -319,23 +318,23 @@ void LabJackLayer::FillU3Info()
 	// Determine if a HV or LV is present
 	dblValue = 0;
 	eGet(lngHandle, LJ_ioGET_CONFIG, LJ_chU3HV, &dblValue, 0);
-	int n;
-	n = 0;
 	if(dblValue) // If HV
-		for (; n < HV_CHANNELS; n++) 
+		for (n = 0; n < HV_CHANNELS; n++) 
 		{
 			infoStruct->AI_ChInfo[n].InputRange_Max = 10;
 			infoStruct->AI_ChInfo[n].InputRange_Min = -10;
-			infoStruct->AI_ChInfo[n].Resolution = 65536;	  /* == 16 Bit */
+			infoStruct->AI_ChInfo[n].Resolution = CHANNEL_RESOLUTION;	  /* == 16 Bit */
 			infoStruct->AI_ChInfo[n].BaseUnit = DRV_BASE_UNIT_2COMP;
 		}
 	for (; n < infoStruct->Max_AI_Channel; n++)
 	{
-		infoStruct->AI_ChInfo[n].InputRange_Max = 0;
-		infoStruct->AI_ChInfo[n].InputRange_Min = 2.44;
-		infoStruct->AI_ChInfo[n].Resolution = 65536;	  /* == 16 Bit */
+		infoStruct->AI_ChInfo[n].InputRange_Max = 2.5;
+		infoStruct->AI_ChInfo[n].InputRange_Min = -2.5;
+		infoStruct->AI_ChInfo[n].Resolution = CHANNEL_RESOLUTION;	  /* == 16 Bit */
 		infoStruct->AI_ChInfo[n].BaseUnit = DRV_BASE_UNIT_2COMP;
 	}
+
+	// TODO: Fill gains
 }
 
 /**
@@ -354,11 +353,18 @@ void LabJackLayer::FillU6Info()
 
 	for (n=0; n < infoStruct->Max_AI_Channel; n++) 
 	{
-		infoStruct->AI_ChInfo[n].InputRange_Max = 10;
-		infoStruct->AI_ChInfo[n].InputRange_Min = -10;
-		infoStruct->AI_ChInfo[n].Resolution = 65536;	  /* == 16 Bit */
+		infoStruct->AI_ChInfo[n].InputRange_Max = 10;//CalMaxAIValue(n);
+		infoStruct->AI_ChInfo[n].InputRange_Min = -10;//CalMinAIValue(n);
+		infoStruct->AI_ChInfo[n].Resolution = CHANNEL_RESOLUTION;	  /* == 16 Bit */
 		infoStruct->AI_ChInfo[n].BaseUnit = DRV_BASE_UNIT_2COMP;
 	}
+
+	// Insert gains
+	dasyLJGainCodes.clear();
+	dasyLJGainCodes.insert(pair<long, long>(1, LJ_rgBIP10V));
+	dasyLJGainCodes.insert(pair<long, long>(10, LJ_rgBIP1V));
+	dasyLJGainCodes.insert(pair<long, long>(100, LJ_rgBIPP1V));
+	dasyLJGainCodes.insert(pair<long, long>(1000,LJ_rgBIPP01V));
 }
 
 /**
@@ -380,9 +386,17 @@ void LabJackLayer::FillUE9Info()
 	{
 		infoStruct->AI_ChInfo[n].InputRange_Max = 5;
 		infoStruct->AI_ChInfo[n].InputRange_Min = -5;
-		infoStruct->AI_ChInfo[n].Resolution = 65536;	  /* == 16 Bit */
+		infoStruct->AI_ChInfo[n].Resolution = CHANNEL_RESOLUTION;	  /* == 16 Bit */
 		infoStruct->AI_ChInfo[n].BaseUnit = DRV_BASE_UNIT_2COMP;
 	}
+
+	// Fill gain codes
+	// TODO: 0-5V range
+	dasyLJGainCodes.clear();
+	dasyLJGainCodes.insert(pair<long, long>(1, LJ_rgBIP5V));
+	dasyLJGainCodes.insert(pair<long, long>(2, LJ_rgUNI2P5V));
+	dasyLJGainCodes.insert(pair<long, long>(4, LJ_rgUNI1P25V));
+	dasyLJGainCodes.insert(pair<long, long>(8, LJ_rgUNIP625V));
 }
 
 /**
@@ -525,6 +539,7 @@ void LabJackLayer::SetDeviceType(int type)
  **/
 void LabJackLayer::BeginExperiment()
 {
+	debugFile.open("C:\\Documents and Settings\\Owner\\Desktop\\DasyLabTest\\sample1.txt");
 
 	// Check that the device is capable of the desired frequency
 	if(!IsFrequencyValid())
@@ -556,6 +571,9 @@ void LabJackLayer::BeginExperiment()
 	if (numAINRequested == 0 && numDIRequested == 0)
 		return;
 
+	// Configure the range
+	ConfigureRange();
+
 	// TODO: A more empirical approach to determining which mode would
 	//       be more efficient
 	// Start streaming / command response loop
@@ -573,6 +591,8 @@ void LabJackLayer::BeginExperiment()
 void LabJackLayer::StopExperiment()
 {
 	long lngErrorcode;
+
+	debugFile.close();
 
 	if(isStreaming)
 	{
@@ -801,13 +821,27 @@ bool LabJackLayer::IsRequestingDI(int channel)
 **/
 SAMPLE LabJackLayer::ConvertAIValue(double value, UINT channel)
 {
+	//SAMPLE returnArray[2];
+	double maxValue;
+
+	// Apply range
+	if(infoStruct->AI_ChSetup[channel].GainCode != 0)
+		value = value * infoStruct->GainInfo[infoStruct->AI_ChSetup[channel].GainCode];
+
 	// TODO: This is a really unacceptable excuse for shuffling data around
 	// Calculate range
+	debugFile << value << "\n";
 	double inputRange = infoStruct->AI_ChInfo[channel].InputRange_Max - infoStruct->AI_ChInfo[channel].InputRange_Min;
 	double bitsAvailable = sizeof(SAMPLE) * 8;
-	double maxValue = pow(2.0, bitsAvailable-1);
-	double conversionFactor = (maxValue / inputRange);
-	return (SAMPLE) (conversionFactor * value);
+
+	// Find the maximum value
+	if (infoStruct->AI_ChInfo[channel].InputRange_Min < 0)
+		maxValue = pow(2.0, bitsAvailable-1);
+	else
+		maxValue = pow(2.0, bitsAvailable);
+
+	// Return the converted value
+	return (SAMPLE)(maxValue / inputRange * value);
 }
 
 /**
@@ -1177,6 +1211,8 @@ double LabJackLayer::ConvertAOValue(DWORD value, UINT channel)
 **/
 void LabJackLayer::OpenDevice(long newDeviceType)
 {
+	long lngErrorcode;
+
 	if(open)
 		Close();
 
@@ -1187,6 +1223,11 @@ void LabJackLayer::OpenDevice(long newDeviceType)
 
 	// Save the device type
 	deviceType = newDeviceType;
+
+	// Get the cal constants
+	long pCalMem = (long)&calConstants[0];
+	lngErrorcode = eGet(lngHandle, LJ_ioGET_CONFIG, LJ_chCAL_CONSTANTS, 0, pCalMem);
+    ErrorHandler(lngErrorcode);
 
 	// Reset the InfoStructure
 	// Fill the information structure
@@ -1234,4 +1275,110 @@ long LabJackLayer::GetDeviceType()
 bool LabJackLayer::IsUsingEthernet()
 {
 	return false;
+}
+
+/**
+ * Name: ConfigureRange()
+ * Desc: Changes the information structure's range
+**/
+void LabJackLayer::ConfigureRange()
+{
+	int n;
+	long lngErrorcode;
+
+	for (n=0; n < numAINRequested; n++) 
+	{
+		//infoStruct->AI_ChInfo[n].InputRange_Max = CalMaxAIValue(n);
+		//infoStruct->AI_ChInfo[n].InputRange_Min = CalMinAIValue(n);
+		lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_AIN_RANGE, n, infoStruct->GainInfo[infoStruct->AI_ChSetup[n].GainCode], 0, 0);
+		ErrorHandler(lngErrorcode);
+	}
+}
+
+/**
+ * Name: CalMaxAIValue(int channel)
+ * Desc: Gets the calibrated max value for the given channel
+**/
+double LabJackLayer::CalMaxAIValue(int channel)
+{
+	double posSlope, center;
+	long dasyLabRangeCode, ljRangeCode;
+	dasyLabRangeCode = infoStruct->GainInfo[infoStruct->AI_ChSetup[channel].GainCode];
+	ljRangeCode = ConvertToUDRange(dasyLabRangeCode);
+	posSlope = calConstants[posSlopeConstLocations[ljRangeCode]];
+	center = calConstants[centerConstLocations[ljRangeCode]];
+
+	return (MAX_BIT_VALUE - center) * posSlope;
+}
+
+/**
+ * Name: CalMinAIValue(int channel)
+ * Desc: Returns the calibrated min value for the given range
+**/
+double LabJackLayer::CalMinAIValue(int channel)
+{
+	double negSlope, center;
+	long dasyLabRangeCode, ljRangeCode;
+
+	dasyLabRangeCode = infoStruct->GainInfo[infoStruct->AI_ChSetup[channel].GainCode];
+	ljRangeCode = ConvertToUDRange(dasyLabRangeCode);
+	negSlope = calConstants[negSlopeConstLocations[ljRangeCode]];
+	center = calConstants[centerConstLocations[ljRangeCode]];
+
+	return (center - MIN_BIT_VALUE) * negSlope;
+}
+
+/**
+ * Name: MapCalConstants()
+ * Desc: Loads the locations for various calibration constants
+ *		 for the current device type.
+**/
+//void LabJackLayer::MapCalConstants()
+//{
+//	// The following values map the ranges defined in the UD driver header
+//	// to the number of bytes from the starting byte (0) as returned from the
+//	// UD driver
+//	switch(deviceType)
+//	{
+//	case LJ_dtU3:
+//		break; // TODO: Support special range
+//
+//	case LJ_dtU6:
+//
+//		// Clear maps
+//		posSlopeConstLocations.clear();
+//		negSlopeConstLocations.clear();
+//		centerConstLocations.clear();
+//
+//		// Bipolar 10 V
+//		posSlopeConstLocations.insert(pair<long, long>(LJ_rgBIP10V, 0));
+//		negSlopeConstLocations.insert(pair<long, long>(LJ_rgBIP10V, 8));
+//		centerConstLocations.insert(pair<long, long>(LJ_rgBIP10V, 9));
+//		
+//		// Bipolar 1 V
+//		posSlopeConstLocations.insert(pair<long, long>(LJ_rgBIP1V, 3));
+//		negSlopeConstLocations.insert(pair<long, long>(LJ_rgBIP1V, 11));
+//		centerConstLocations.insert(pair<long, long>(LJ_rgBIP1V, 12));
+//		
+//		// Bipolar 100 mV
+//		posSlopeConstLocations.insert(pair<long, long>(LJ_rgBIPP1V, 5));
+//		negSlopeConstLocations.insert(pair<long, long>(LJ_rgBIPP1V, 13));
+//		centerConstLocations.insert(pair<long, long>(LJ_rgBIPP1V, 14));
+//		
+//		// Bipolar 10 mV
+//		posSlopeConstLocations.insert(pair<long, long>(LJ_rgBIPP01V, 7));
+//		negSlopeConstLocations.insert(pair<long, long>(LJ_rgBIPP01V, 15));
+//		centerConstLocations.insert(pair<long, long>(LJ_rgBIPP01V, 16));
+//		
+//		break;
+//	}
+//}
+
+/**
+ * Name: ConvertToUDRange(long dasyRange)
+ * Desc: Converts a DASYLab range to a range code needed for the UD driver
+**/
+long LabJackLayer::ConvertToUDRange(long dasyRange)
+{
+	return dasyLJGainCodes[dasyRange];
 }
