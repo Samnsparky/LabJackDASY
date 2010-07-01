@@ -43,7 +43,7 @@ using namespace std;
 **/
 LabJackLayer::LabJackLayer(DRV_INFOSTRUCT * structAddress)
 {
-	debugValue = (MAX_BIT_VALUE/2.0);
+	//debugValue = (MAX_BIT_VALUE/2.0);
 
 	// Put in some default values
 	aiRetrieveIndex = 0;
@@ -744,35 +744,46 @@ void LabJackLayer::StreamCallback(long scansAvailable, double userValue)
 {
 	
 	long lngErrorcode;
-	int i;
-	double dblScansAvailable = scansAvailable;
-	double adblData[4000]; // TODO: Dynamic allocation
+	int i,n;
+	double dblScansAvailable = (double)scansAvailable;
+	double adblData[40000]; // TODO: Dynamic allocation
 	long padblData = (long)&adblData[0];
 
 	UNUSED(userValue);
 
+	int numStreamChannels = numAINRequested;
+	if (numDIRequested > 0)
+		numStreamChannels++;
+
+	// If there is no data available, skip
+	if (scansAvailable <= 0)
+		return;
+
 	lngErrorcode = eGet(lngHandle, LJ_ioGET_STREAM_DATA, LJ_chALL_CHANNELS, &dblScansAvailable, padblData);
 	ErrorHandler(lngErrorcode);
 	
-	// Convert analog input values and place into buffer
-	for(i=0; i<numAINRequested; i++)
+	for(n=1; n<=scansAvailable; n++)
 	{
-		AddToInputBuffer(ConvertAIValue(adblData[i], i));
-	}
-
-	// Determine states of digital input on channel 193
-	double diData = adblData[i+1];
-	for(i=0; i<numDIRequested; i++)
-	{
-		// Feed channel value in FIFO buffer
-		inputBufferAdr[inputStoreIndex] = CheckBitHigh(diData, digitalInputScanList[i]);
-
-		// increment FIFO index and wrap around
-		inputStoreIndex++;
-		if (inputStoreIndex == infoStruct->DriverBufferSize)
+		// Convert analog input values and place into buffer
+		for(i=0; i<numAINRequested; i++)
 		{
-			inputStoreIndex = 0;
-			wrapAround = TRUE;
+			AddToInputBuffer(ConvertAIValue(adblData[i*n], i));
+		}
+
+		// Determine states of digital input on channel 193
+		double diData = adblData[i*n+1];
+		for(i=0; i<numDIRequested; i++)
+		{
+			// Feed channel value in FIFO buffer
+			inputBufferAdr[inputStoreIndex] = CheckBitHigh(diData, digitalInputScanList[i]);
+
+			// increment FIFO index and wrap around
+			inputStoreIndex++;
+			if (inputStoreIndex == infoStruct->DriverBufferSize)
+			{
+				inputStoreIndex = 0;
+				wrapAround = TRUE;
+			}
 		}
 	}
 }
@@ -785,7 +796,7 @@ void LabJackLayer::ErrorHandler (LJ_ERROR lngErrorcode)
 {
 	if (lngErrorcode != LJE_NOERROR)
 	{
-		SetError(lngErrorcode);
+ 		SetError(lngErrorcode);
 		DRV_ShowError();
 	}
 }
@@ -824,7 +835,6 @@ SAMPLE LabJackLayer::ConvertAIValue(double value, UINT channel)
 	if(infoStruct->AI_ChSetup[channel].GainCode != 0)
 		value = value * infoStruct->GainInfo[infoStruct->AI_ChSetup[channel].GainCode];
 
-	// TODO: This is a really unacceptable excuse for shuffling data around
 	// Calculate range
 	double inputRange = infoStruct->AI_ChInfo[channel].InputRange_Max - infoStruct->AI_ChInfo[channel].InputRange_Min;
 	double bitsAvailable = sizeof(SAMPLE) * 8;
@@ -949,12 +959,16 @@ void LabJackLayer::StartStreaming()
     lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chAIN_RESOLUTION, 12, 0, 0);
     ErrorHandler(lngErrorcode);
 
+	int numStreamChannels = numAINRequested;
+	if (numDIRequested > 0)
+		numStreamChannels++;
+
     // Set the scan rate.
-    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_SCAN_FREQUENCY, infoStruct->AI_Frequency/(numAINRequested + numDIRequested), 0, 0);
+    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_SCAN_FREQUENCY, infoStruct->AI_Frequency/numStreamChannels, 0, 0);
     ErrorHandler(lngErrorcode);
 
     // Give the driver a 5 second buffer (scanRate * channels * 5 seconds).
-    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_BUFFER_SIZE, infoStruct->AI_Frequency*5, 0, 0);
+    lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_CONFIG, LJ_chSTREAM_BUFFER_SIZE, numStreamChannels*infoStruct->AI_Frequency*5, 0, 0);
     ErrorHandler(lngErrorcode);
 
     // Configure reads to retrieve whatever data is available without waiting
@@ -998,7 +1012,7 @@ void LabJackLayer::StartStreaming()
 	// have been reached.
 	//long pCallback = void (*StreamCallback)(long ScansAvailable, double UserData);
 	//pCallback = &StreamCallback;
-    lngErrorcode = ePut(lngHandle, LJ_ioSET_STREAM_CALLBACK, (long)StreamCallbackWrapper, 0, 0);
+    lngErrorcode = ePut(lngHandle, LJ_ioSET_STREAM_CALLBACK, (long)StreamCallbackWrapper, 0, infoStruct->ADI_BlockSize/numStreamChannels);
 	ErrorHandler(lngErrorcode);
 
 	//Start the stream.
@@ -1182,7 +1196,7 @@ void LabJackLayer::WriteDAC(UINT chan, DWORD outVal)
 
 	// Write the value for the given channel
 	lngErrorcode = AddRequest(lngHandle, LJ_ioPUT_DAC, chan, convertedVoltage, 0, 0);
-	GoOne(lngHandle); // TODO: What is up here? Performance issue!
+	GoOne(lngHandle); // TODO: Potential performance issue
 	ErrorHandler(lngErrorcode);
 }
 
@@ -1202,17 +1216,21 @@ double LabJackLayer::ConvertAOValue(DWORD value, UINT channel)
 /**
  * Name: OpenDevice(long deviceType)
  * Desc: Closes the current device (if any) and opens the  
- *		 device of the given type.
+ *		 device of the given type and id
 **/
-void LabJackLayer::OpenDevice(long newDeviceType)
+void LabJackLayer::OpenDevice(long newDeviceType, int id)
 {
 	long lngErrorcode;
 
 	if(open)
 		Close();
 
+	// Save the id and indicate that usb is used
+	localID = id;
+	isUsingEthernet = false;
+
 	// Open the LabJack and create buffer
-	SetError(OpenLabJack (newDeviceType, LJ_ctUSB, "1", 1, &lngHandle));
+	SetError(OpenLabJack (newDeviceType, LJ_ctUSB, ToCharArray(id), 1, &lngHandle));
 	if (!GetError() && AllocateInputBuffer (DEFAULT_BUFFER_SIZE)) 
 		open = TRUE;
 
@@ -1244,8 +1262,13 @@ void LabJackLayer::OpenEthernetDevice(long newDeviceType, CString address)
 	if (!GetError() && AllocateInputBuffer (DEFAULT_BUFFER_SIZE)) 
 		open = TRUE;
 
-	// Save the device type
+	// Save the device type and show that we are using ethernet
 	deviceType = newDeviceType;
+	isUsingEthernet = true;
+
+	// Save the ip address to the instance variable ipAddress
+	// TODO: These names could be confusing
+	ipAddress = address;
 
 	// Reset the InfoStructure
 	// Fill the information structure
@@ -1269,7 +1292,7 @@ long LabJackLayer::GetDeviceType()
 **/
 bool LabJackLayer::IsUsingEthernet()
 {
-	return false;
+	return isUsingEthernet;
 }
 
 /**
@@ -1377,4 +1400,30 @@ double LabJackLayer::CalMinAIValue(int channel)
 long LabJackLayer::ConvertToUDRange(long dasyRange)
 {
 	return dasyLJGainCodes[dasyRange];
+}
+
+/**
+ * Name: GetIPAddress()
+ * Desc: Returns the ip address of the device currently in use by
+ *		 LabJackLayer or null if ethernet is not being utalized.
+**/
+CString LabJackLayer::GetIPAddress()
+{
+	if (IsUsingEthernet())
+		return ipAddress;
+	else
+		return NULL;
+}
+
+/**
+ * Name: GetDeviceID()
+ * Desc: Returns the local id of the device currently in use or
+ *		 null if the device is connected via ethernet
+**/
+int LabJackLayer::GetDeviceID()
+{
+	if (IsUsingEthernet() == false)
+		return localID;
+	else
+		return NULL;
 }

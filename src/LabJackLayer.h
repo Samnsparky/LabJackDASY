@@ -104,8 +104,11 @@ class LabJackLayer {
 		calMapType negSlopeConstLocations;	
 		calMapType centerConstLocations;
 		calMapType dasyLJGainCodes;						// Maps a DASYLab "real gain" to the gain code used by the UD driver
-		double debugValue;
-		ofstream debugFile;
+		//double debugValue;
+		//ofstream debugFile;
+		int localID;									// The local id of the device that this LabJackLayer wraps
+		CString ipAddress;								// The IP address of a UE device opened, if applicable. null otherise
+		bool isUsingEthernet;							// Indicates if the device is connected by ethernet
 
 	public:
 		LabJackLayer(DRV_INFOSTRUCT * structAddress);
@@ -138,11 +141,13 @@ class LabJackLayer {
 		void CommandResponseCallback();
 		void WriteDigitalOutput(UINT chan, DWORD outVal);
 		void WriteDAC(UINT chan, DWORD outVal);
-		void OpenDevice(long deviceType); // TODO: This is bad form
+		void OpenDevice(long deviceType, int id); // TODO: This is bad form
 		long GetDeviceType();
 		bool IsUsingEthernet();
 		void OpenEthernetDevice(long newDeviceType, CString value);
 		long ConvertToUDRange(long dasyLabRangeCode);
+		CString GetIPAddress();
+		int GetDeviceID();
 
 		// Public constants
 		const static int LABJACK_ERROR_PREFIX = 5000;	// Starting error number so that DASYLab does

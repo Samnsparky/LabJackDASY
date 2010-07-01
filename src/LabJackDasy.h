@@ -62,10 +62,14 @@ BOOL _stdcall DlgCardDef (HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lPar
 // Helper functions not exported to DASYLab
 void StreamCallbackWrapper(long scansAvailable, double userValue);
 void CALLBACK CommandResponseCallbackWrapper(UINT uID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2);
-void OpenNewDevice(long newDeviceType);
+void OpenNewDevice(long newDeviceType, int id);
 void OpenNewEthernetDevice(long newDeviceType, CString value);
 long GetDeviceType();
 bool IsUsingEthernet();
+int GetID();
+CString GetIPAddress();
+char * ToCharArray(int x);
+CString ToCString(int x);
 
 #ifdef  __cplusplus
 } // extern C

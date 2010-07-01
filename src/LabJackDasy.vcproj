@@ -131,7 +131,17 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
+				RelativePath=".\Debug\BuildLog.htm"
+				DeploymentContent="TRUE">
+			</File>
+			<File
 				RelativePath=".\DeviceSetupDialog.cpp">
+			</File>
+			<File
+				RelativePath=".\Debug\DeviceSetupDialog.obj">
+			</File>
+			<File
+				RelativePath=".\Debug\DriverSetup.res">
 			</File>
 			<File
 				RelativePath=".\LabJackDasy.cpp">
@@ -140,7 +150,31 @@
 				RelativePath=".\LabJackDasy.def">
 			</File>
 			<File
+				RelativePath=".\Debug\LabJackDasy.dll">
+			</File>
+			<File
+				RelativePath=".\Debug\LabJackDasy.exp">
+			</File>
+			<File
+				RelativePath=".\Debug\LabJackDasy.ilk">
+			</File>
+			<File
+				RelativePath=".\Debug\LabJackDasy.lib">
+			</File>
+			<File
+				RelativePath=".\Debug\LabJackDasy.obj">
+			</File>
+			<File
+				RelativePath=".\Debug\LabJackDasy.pch">
+			</File>
+			<File
+				RelativePath=".\Debug\LabJackDasy.pdb">
+			</File>
+			<File
 				RelativePath=".\LabJackLayer.cpp">
+			</File>
+			<File
+				RelativePath=".\Debug\LabJackLayer.obj">
 			</File>
 			<File
 				RelativePath=".\stdafx.cpp">
@@ -156,6 +190,15 @@
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="1"/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\Debug\stdafx.obj">
+			</File>
+			<File
+				RelativePath=".\Debug\vc70.idb">
+			</File>
+			<File
+				RelativePath=".\Debug\vc70.pdb">
 			</File>
 		</Filter>
 		<Filter

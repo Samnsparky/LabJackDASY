@@ -368,7 +368,7 @@ int _stdcall DRV_InitDevice(DRV_INFOSTRUCT *newInfoStruct)
 	}
 
 	// Open the device
-	deviceLayer->OpenDevice(targetDeviceType);
+	deviceLayer->OpenDevice(targetDeviceType, 0); // Pass zero for first found
 
 	// Return value according to errors generated
 	if (deviceLayer->GetError())
@@ -535,7 +535,7 @@ int _stdcall DRV_ShowDialog(UINT boxNum, DWORD extraPara)
 	parent = CWnd::FromHandle(hWnd);
 	wnd = new DeviceSetupDialog();
 	wnd->Create(IDD_DEVICE_DIALOG, parent); 
-	wnd->PopulateDeviceCombo();
+	wnd->PopulateFields();
 	wnd->ShowWindow(SW_SHOW);
 	//m_pMainWnd = wnd;
 
@@ -708,9 +708,9 @@ BOOL CALLBACK DlgCardDef (HWND hWndDlg, UINT message, WPARAM wParam, LPARAM lPar
 /**
  * Name: OpenNewDevice(long newDeviceType)
  * Desc: Creates a new device layer for the given device type
- *		 and closes any open device layers
+ *		 and local id
 **/
-void OpenNewDevice(long newDeviceType)
+void OpenNewDevice(long newDeviceType, int id)
 {
 	// TODO: There might be a bug (?) in DASYLab that
 	//		 does not let the following occur
@@ -726,7 +726,7 @@ void OpenNewDevice(long newDeviceType)
 	//deviceLayer = new LabJackLayer(infoStruct, newDeviceType);
 	
 	// TODO: This is bad bad form
-	deviceLayer->OpenDevice(newDeviceType);
+	deviceLayer->OpenDevice(newDeviceType, id);
 }
 
 /**
@@ -757,6 +757,48 @@ long GetDeviceType()
 bool IsUsingEthernet()
 {
 	return deviceLayer->IsUsingEthernet();
+}
+
+/**
+ * Name: GetID()
+ * Desc: Returns the local id of the device in use by DASYLab or
+ *		 null if a device is not in use by USB
+**/
+int GetID()
+{
+	return deviceLayer->GetDeviceID();
+}
+
+/**
+ * Name: GetIPAddress
+ * Desc: Get the string IP address of the device currently in use
+ *		 by DASYLab or null if ethernet is not in use
+**/
+CString GetIPAddress()
+{
+	return deviceLayer->GetIPAddress();
+}
+
+/**
+ * Name: ToCharArray(int x)
+ * Desc: Helper function that converts an integer to a string
+**/
+char * ToCharArray(int x)
+{
+	char buffer[30];
+	sprintf(buffer, "%d", x);
+	return buffer;
+}
+
+/**
+ * Name: ToCString(int x)
+ * Desc: Helper function to convert an integer to a string
+**/
+CString ToCString(int x)
+{
+	CString returnString;
+	returnString.Format("%i", x);
+	return returnString;
 }
 
 /* MFC Required Portions . . . thanks MFC */

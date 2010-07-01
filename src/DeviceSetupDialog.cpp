@@ -1,14 +1,13 @@
 // DeviceSetupDialog.cpp : implementation file
-//
 
+// Windows
 #include "stdafx.h"
+
+// Header file for dialog
 #include "DeviceSetupDialog.h"
 
 // Application
 #include "LabJackDasy.h"
-
-// LabJack
-#include "c:\program files\labjack\drivers\LabJackUD.h" // TODO: needs to be flexible
 
 IMPLEMENT_DYNAMIC(DeviceSetupDialog, CDialog)
 DeviceSetupDialog::DeviceSetupDialog(CWnd* pParent /*=NULL*/)
@@ -29,6 +28,7 @@ void DeviceSetupDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_ETHERNET_CHECK, ethernetCheck);
 	DDX_Control(pDX, IDC_IP_ADDRESS_LABEL, ipAddressLabel);
 	DDX_Control(pDX, IDC_IP_ENTRY, ipEntry);
+	DDX_Control(pDX, IDC_ID_ENTRY, idEntry);
 }
 
 
@@ -49,14 +49,23 @@ void DeviceSetupDialog::OnBnClickedCancel()
 
 void DeviceSetupDialog::OnBnClickedOk()
 {
+	int id;
+
+	// Get the id number as string
+	CString * idAddress = new CString("");
+	idEntry.GetWindowText(*idAddress);
+
+	// Try to convert the number to string or default to 0
+	id = atoi(*idAddress);
+
 	// Determine the device type selected
 	switch(DeviceCombo.GetCurSel())
 	{
 	case U3_COMBOBOX_INDEX:
-		OpenNewDevice(LJ_dtU3);
+		OpenNewDevice(LJ_dtU3, id);
 		break;
 	case U6_COMBOBOX_INDEX:
-		OpenNewDevice(LJ_dtU6);
+		OpenNewDevice(LJ_dtU6, id);
 		break;
 	case UE9_COMBOBOX_INDEX:
 		
@@ -69,14 +78,16 @@ void DeviceSetupDialog::OnBnClickedOk()
 			delete ipAddress;
 		}
 		else
-			OpenNewDevice(LJ_dtUE9);
+			OpenNewDevice(LJ_dtUE9, id);
 		break;
 	}
+
+	delete idAddress;
 
 	CDialog::OnOK();
 }
 
-void DeviceSetupDialog::PopulateDeviceCombo()
+void DeviceSetupDialog::PopulateFields()
 {
 	// Get the currently selected device type
 	long deviceType = GetDeviceType();
@@ -99,19 +110,21 @@ void DeviceSetupDialog::PopulateDeviceCombo()
 		// Set the selection
 		DeviceCombo.SetCurSel(UE9_COMBOBOX_INDEX);
 
-		// Show the ethernet control
-		SetEthernetControl(true, IsUsingEthernet());
+		// Show the ethernet control and disable local id entry
+		ToggleControls(true, IsUsingEthernet());
 	}
 	else
-		SetEthernetControl(false, false);
+		ToggleControls(false, false);
 	UpdateData(FALSE);
 }
 
 /**
- * Name: SetEthernetControl(bool showCheckbox, bool showIPEntry)
- * Desc: Shows or hides the ethernet controls and toggles the ethernet checkbox
+ * Name: ToggleControls(bool showCheckbox, bool showIPEntry)
+ * Desc: Shows or hides the ethernet controls and toggles 
+ *		 the ethernet checkbox and local ID entry, filling
+ *		 each appropriately.
 **/
-void DeviceSetupDialog::SetEthernetControl(bool showCheckbox, bool showIPEntry)
+void DeviceSetupDialog::ToggleControls(bool showCheckbox, bool showIPEntry)
 {
 	if(showCheckbox)
 	{
@@ -128,28 +141,35 @@ void DeviceSetupDialog::SetEthernetControl(bool showCheckbox, bool showIPEntry)
 		ethernetCheck.SetCheck(BST_CHECKED);
 		ipAddressLabel.ShowWindow(SW_SHOW);
 		ipEntry.ShowWindow(SW_SHOW);
+		idEntry.EnableWindow(FALSE);
+
+		// Fill the IP address entry
+		ipEntry.SetWindowText(GetIPAddress());
 	}
 	else
 	{
 		ethernetCheck.SetCheck(BST_UNCHECKED);
 		ipAddressLabel.ShowWindow(SW_HIDE);
 		ipEntry.ShowWindow(SW_HIDE);
-	}
+		idEntry.EnableWindow(TRUE);
 
+		// Fill the ID entry
+		idEntry.SetWindowText(ToCString(GetID()));
+	}
 }
 void DeviceSetupDialog::OnCbnSelchangeDeviceTypeCombo()
 {
 	// Determine the device type selected
 	if(DeviceCombo.GetCurSel() == UE9_COMBOBOX_INDEX)
-		SetEthernetControl(true, IsUsingEthernet());
+		ToggleControls(true, IsUsingEthernet());
 	else
-		SetEthernetControl(false, false);
+		ToggleControls(false, false);
 }
 
 void DeviceSetupDialog::OnBnClickedEthernetCheck()
 {
 	if(ethernetCheck.GetCheck())
-		SetEthernetControl(true, true);
+		ToggleControls(true, true);
 	else
-		SetEthernetControl(true, false);
+		ToggleControls(true, false);
 }

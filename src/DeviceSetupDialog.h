@@ -3,6 +3,11 @@
 #include "resource.h"
 #include <string>
 #include "afxcmn.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+// LabJack
+#include "c:\program files\labjack\drivers\LabJackUD.h" // TODO: needs to be flexible
 
 // DeviceSetupDialog dialog
 
@@ -18,7 +23,7 @@ public:
 	virtual ~DeviceSetupDialog();
 	afx_msg void OnBnClickedCancel();
 	afx_msg void OnBnClickedOk();
-	void PopulateDeviceCombo();
+	void PopulateFields();
 
 // Dialog Data
 	enum { IDD = IDD_DEVICE_DIALOG };
@@ -30,7 +35,7 @@ protected:
 
 private:
 	CComboBox DeviceCombo;
-	void SetEthernetControl(bool showCheckbox, bool showIPEntry);
+	void ToggleControls(bool showCheckbox, bool showIPEntry);
 public:
 	CEdit ipEntry;
 	CStatic ethernetLabel;
@@ -39,4 +44,5 @@ public:
 	afx_msg void OnCbnSelchangeDeviceTypeCombo();
 	afx_msg void OnBnClickedEthernetCheck();
 	afx_msg void OnEnChangeIpEntry();
+	CEdit idEntry;
 };
