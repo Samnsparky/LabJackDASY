@@ -44,7 +44,7 @@ typedef std::map <long, int> calMapType;
 class LabJackLayer {
 		
 		// Constants
-		const static int START_STREAM_FREQUENCY = 20;	// Start streaming at 20 Hz
+		const static int START_STREAM_FREQUENCY = 100;	// Start streaming at 100 Hz
 		const static int HV_CHANNELS = 4;
 		const static int MAX_SCANS_PER_SECOND = 50000;
 		const static DWORD DEFAULT_BUFFER_SIZE = 4096;	// Default buffer size (bytes)

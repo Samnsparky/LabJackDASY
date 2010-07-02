@@ -572,10 +572,21 @@ void LabJackLayer::BeginExperiment()
 	// Configure the range
 	ConfigureRange();
 
+	// Determine overall frequency
+	double overallFrequency;
+	overallFrequency = infoStruct->AI_Frequency;
+	if (numDIRequested > 0)
+	{
+		if (numAINRequested > 0)
+			overallFrequency += infoStruct->AI_Frequency / numAINRequested * (numDIRequested - 1);
+		else
+			overallFrequency += infoStruct->AI_Frequency * (numDIRequested - 1);
+	}
+
 	// TODO: A more empirical approach to determining which mode would
 	//       be more efficient
 	// Start streaming / command response loop
-	if (infoStruct->AI_Frequency < START_STREAM_FREQUENCY)
+	if (overallFrequency < START_STREAM_FREQUENCY)
 		StartCommandResponse();
 	else
 		StartStreaming();
@@ -1208,7 +1219,7 @@ double LabJackLayer::ConvertAOValue(DWORD value, UINT channel)
 {
 	double inputRange = infoStruct->AI_ChInfo[channel].InputRange_Max - infoStruct->AI_ChInfo[channel].InputRange_Min;
 	double bitsAvailable = sizeof(SAMPLE) * 8;
-	double maxValue = pow(2.0, bitsAvailable-1);
+	double maxValue = pow(2.0, bitsAvailable);
 	double conversionFactor = (maxValue * 2.0 / inputRange); // Multiply by 2 to get both negative and positive values
 	return value / conversionFactor;
 }

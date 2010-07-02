@@ -1,3 +1,11 @@
+/**
+ * Copyright (c) 2010 LabJack Corp.
+ * See License.txt for more information
+ *
+ * Name: DeviceSetupDialog.h
+ * Desc: Header file for the MFC DeviceSetupDialog
+**/
+
 #pragma once
 #include "afxwin.h"
 #include "resource.h"
