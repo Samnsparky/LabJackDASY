@@ -8,6 +8,7 @@
 
 // Application
 #include "LabJackDasy.h"
+#include ".\devicesetupdialog.h"
 
 IMPLEMENT_DYNAMIC(DeviceSetupDialog, CDialog)
 DeviceSetupDialog::DeviceSetupDialog(CWnd* pParent /*=NULL*/)
