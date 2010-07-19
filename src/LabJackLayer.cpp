@@ -625,7 +625,6 @@ void LabJackLayer::StopExperiment()
 // TODO: This needs some clean up
 bool LabJackLayer::ConfirmDataStructure()
 {
-	DWORD timeBase;
 	DWORD minBuffer;
 	DWORD blockSize;
 	int c, i;						  /* for-loop variables */
@@ -1231,8 +1230,6 @@ double LabJackLayer::ConvertAOValue(DWORD value, UINT channel)
 **/
 void LabJackLayer::OpenDevice(long newDeviceType, int id)
 {
-	long lngErrorcode;
-
 	if(open)
 		Close();
 

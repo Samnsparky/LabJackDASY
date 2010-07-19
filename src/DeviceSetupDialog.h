@@ -13,6 +13,7 @@
 #include "afxcmn.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "TimerMode.h"
 
 // LabJack
 #include "c:\program files\labjack\drivers\LabJackUD.h" // TODO: needs to be flexible
@@ -42,15 +43,26 @@ protected:
 	DECLARE_MESSAGE_MAP()
 
 private:
+	CComboBox timerCombos[7];
+	TimerMode LJ_TIMER_MODES[14]; // Pseudo-constant
 	CComboBox DeviceCombo;
-	void ToggleControls(bool showCheckbox, bool showIPEntry);
-public:
 	CEdit ipEntry;
 	CStatic ethernetLabel;
 	CButton ethernetCheck;
 	CStatic ipAddressLabel;
+	CEdit idEntry;
+	void CreateTimerModesConst();
 	afx_msg void OnCbnSelchangeDeviceTypeCombo();
 	afx_msg void OnBnClickedEthernetCheck();
 	afx_msg void OnEnChangeIpEntry();
-	CEdit idEntry;
+	void ToggleControls(bool showCheckbox, bool showIPEntry);
+public:
+	CComboBox timer0Combo;
+	CComboBox timer1Combo;
+	CComboBox timer2Combo;
+	CComboBox timer3Combo;
+	CComboBox timer4Combo;
+	CComboBox timer5Combo;
+	CComboBox timer6Combo;
+	afx_msg void OnCbnSelchangeTimer0Combo();
 };

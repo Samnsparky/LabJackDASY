@@ -177,6 +177,9 @@
 				RelativePath=".\Debug\LabJackLayer.obj">
 			</File>
 			<File
+				RelativePath=".\LinkedTimerCombo.cpp">
+			</File>
+			<File
 				RelativePath=".\stdafx.cpp">
 				<FileConfiguration
 					Name="Debug|Win32">
@@ -193,6 +196,9 @@
 			</File>
 			<File
 				RelativePath=".\Debug\stdafx.obj">
+			</File>
+			<File
+				RelativePath=".\TimerMode.cpp">
 			</File>
 			<File
 				RelativePath=".\Debug\vc70.idb">
@@ -215,10 +221,16 @@
 				RelativePath=".\LabJackLayer.h">
 			</File>
 			<File
+				RelativePath=".\LinkedTimerCombo.h">
+			</File>
+			<File
 				RelativePath=".\resource.h">
 			</File>
 			<File
 				RelativePath=".\stdafx.h">
+			</File>
+			<File
+				RelativePath=".\TimerMode.h">
 			</File>
 		</Filter>
 		<Filter

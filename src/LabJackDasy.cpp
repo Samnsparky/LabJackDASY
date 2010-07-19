@@ -325,7 +325,6 @@ DRV_MEASINFO * _stdcall DRV_GetMeasInfoEx()
 **/
 int _stdcall DRV_InitDevice(DRV_INFOSTRUCT *newInfoStruct)
 {
-	int hold;
 	
 	infoStruct = newInfoStruct;
 	

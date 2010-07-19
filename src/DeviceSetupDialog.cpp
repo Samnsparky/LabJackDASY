@@ -15,6 +15,7 @@ DeviceSetupDialog::DeviceSetupDialog(CWnd* pParent /*=NULL*/)
 	: CDialog(DeviceSetupDialog::IDD, pParent)
 {
 	CDialog(DeviceSetupDialog::IDD, pParent);
+	CreateTimerModesConst();
 }
 
 DeviceSetupDialog::~DeviceSetupDialog()
@@ -30,6 +31,13 @@ void DeviceSetupDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_IP_ADDRESS_LABEL, ipAddressLabel);
 	DDX_Control(pDX, IDC_IP_ENTRY, ipEntry);
 	DDX_Control(pDX, IDC_ID_ENTRY, idEntry);
+	DDX_Control(pDX, IDC_TIMER0_COMBO, timerCombos[0]);
+	DDX_Control(pDX, IDC_TIMER1_COMBO, timerCombos[1]);
+	DDX_Control(pDX, IDC_TIMER2_COMBO, timerCombos[2]);
+	DDX_Control(pDX, IDC_TIMER3_COMBO, timerCombos[3]);
+	DDX_Control(pDX, IDC_TIMER4_COMBO, timerCombos[4]);
+	DDX_Control(pDX, IDC_TIMER5_COMBO, timerCombos[5]);
+	DDX_Control(pDX, IDC_TIMER6_COMBO, timerCombos[6]);
 }
 
 
@@ -38,6 +46,7 @@ BEGIN_MESSAGE_MAP(DeviceSetupDialog, CDialog)
 	ON_BN_CLICKED(IDOK, OnBnClickedOk)
 	ON_CBN_SELCHANGE(IDC_DEVICE_TYPE_COMBO, OnCbnSelchangeDeviceTypeCombo)
 	ON_BN_CLICKED(IDC_ETHERNET_CHECK, OnBnClickedEthernetCheck)
+	ON_CBN_SELCHANGE(IDC_TIMER0_COMBO, OnCbnSelchangeTimer0Combo)
 END_MESSAGE_MAP()
 
 
@@ -90,6 +99,8 @@ void DeviceSetupDialog::OnBnClickedOk()
 
 void DeviceSetupDialog::PopulateFields()
 {
+	int i, k;
+
 	// Get the currently selected device type
 	long deviceType = GetDeviceType();
 
@@ -116,6 +127,12 @@ void DeviceSetupDialog::PopulateFields()
 	}
 	else
 		ToggleControls(false, false);
+
+	// Fill timer combo boxes
+	for(i=0; i<7; i++)
+		for(k=0; k<14; k++)
+			timerCombos[i].AddString((LPCTSTR)(LJ_TIMER_MODES[k].GetDescription()));
+
 	UpdateData(FALSE);
 }
 
@@ -173,4 +190,31 @@ void DeviceSetupDialog::OnBnClickedEthernetCheck()
 		ToggleControls(true, true);
 	else
 		ToggleControls(true, false);
+}
+
+/**
+ * Name: LinkedTimerCombo.CreateTimerModesConst()
+ * Desc: Create "constant" LJ_TIMER_MODES
+**/
+void DeviceSetupDialog::CreateTimerModesConst()
+{
+	LJ_TIMER_MODES[0] = TimerMode(LJ_tmPWM16, "LJ_tmPWM16");
+	LJ_TIMER_MODES[1] = TimerMode(LJ_tmPWM8, "LJ_tmPWM8");
+	LJ_TIMER_MODES[2] = TimerMode(LJ_tmRISINGEDGES32, "LJ_tmRISINGEDGES32");
+	LJ_TIMER_MODES[3] = TimerMode(LJ_tmFALLINGEDGES32, "LJ_tmFALLINGEDGES32");
+    LJ_TIMER_MODES[4] = TimerMode(LJ_tmDUTYCYCLE, "LJ_tmDUTYCYCLE");
+	LJ_TIMER_MODES[5] = TimerMode(LJ_tmFIRMCOUNTER, "LJ_tmFIRMCOUNTER");
+	LJ_TIMER_MODES[6] = TimerMode(LJ_tmFIRMCOUNTERDEBOUNCE, "LJ_tmFIRMCOUNTERDEBOUNCE");
+	LJ_TIMER_MODES[7] = TimerMode(LJ_tmFREQOUT, "LJ_tmFREQOUT");
+	LJ_TIMER_MODES[8] = TimerMode(LJ_tmQUAD, "LJ_tmQUAD");
+	LJ_TIMER_MODES[9] = TimerMode(LJ_tmTIMERSTOP, "LJ_tmTIMERSTOP");
+	LJ_TIMER_MODES[10] = TimerMode(LJ_tmSYSTIMERLOW, "LJ_tmSYSTIMERLOW");
+	LJ_TIMER_MODES[11] = TimerMode(LJ_tmSYSTIMERHIGH, "LJ_tmSYSTIMERHIGH");
+	LJ_TIMER_MODES[12] = TimerMode(LJ_tmRISINGEDGES16, "LJ_tmRISINGEDGES16");
+	LJ_TIMER_MODES[13] = TimerMode(LJ_tmFALLINGEDGES16, "LJ_tmFALLINGEDGES16");
+}
+
+void DeviceSetupDialog::OnCbnSelchangeTimer0Combo()
+{
+	// TODO: Add your control notification handler code here
 }
