@@ -67,9 +67,9 @@ void OpenNewEthernetDevice(long newDeviceType, CString value);
 long GetDeviceType();
 bool IsUsingEthernet();
 int GetID();
-CString GetIPAddress();
+char * GetIPAddress();
 char * ToCharArray(int x);
-CString ToCString(int x);
+CString ToCString(int x); // TODO: this is bad form
 
 #ifdef  __cplusplus
 } // extern C

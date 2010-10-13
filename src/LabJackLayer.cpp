@@ -296,7 +296,7 @@ void LabJackLayer::FillInfoStructure()
 	n = 0;
 	for ( calIt=dasyLJGainCodes.begin() ; calIt != dasyLJGainCodes.end(); calIt++ )
 	{
-		infoStruct->GainInfo[n] = calIt->first;
+		infoStruct->GainInfo[n] = (INT16)calIt->first;
 		n++;
 	}
 }
@@ -757,7 +757,7 @@ void LabJackLayer::StreamCallback(long scansAvailable, double userValue)
 	int i,n;
 	double dblScansAvailable = (double)scansAvailable;
 	double adblData[40000]; // TODO: Dynamic allocation
-	long padblData = (long)&adblData[0];
+	long padblData = (long)adblData;
 
 	UNUSED(userValue);
 
@@ -1087,7 +1087,7 @@ bool LabJackLayer::InstallTimerInterruptHandler()
 			return FALSE;
 		}
 
-		hTimerID = timeSetEvent ( (1.0/infoStruct->AI_Frequency*1000), 10, CommandResponseCallbackWrapper, (DWORD)this, TIME_PERIODIC);
+		hTimerID = timeSetEvent ( (UINT)(1.0/infoStruct->AI_Frequency*1000), 10, CommandResponseCallbackWrapper, (DWORD_PTR)this, TIME_PERIODIC);
 		if ( hTimerID == 0 )
 		{
 			timeEndPeriod (10);

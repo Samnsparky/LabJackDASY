@@ -404,7 +404,7 @@ int _stdcall DRV_KillDevice()
 **/
 int _stdcall DRV_LoadWorksheet(const char *name)
 {
-	UNUSED(Name);
+	UNUSED(name);
 	return DRV_FUNCTION_OK;
 }
 
@@ -452,7 +452,7 @@ DWORD _stdcall DRV_ReadDigitalInput(UINT ch)
 **/
 int _stdcall DRV_SaveWorksheet(const char *name)
 {
-	UNUSED(Name);
+	UNUSED(name);
 	return DRV_FUNCTION_OK;
 }
 
@@ -523,7 +523,6 @@ int _stdcall DRV_ShowDialog(UINT boxNum, DWORD extraPara)
 {
 	DeviceSetupDialog*wnd;
 	CWnd * parent;
-	FARPROC lpProc;
 	HWND hWnd;
 
 	// Ugly code thanks to SP1 :(
@@ -773,9 +772,9 @@ int GetID()
  * Desc: Get the string IP address of the device currently in use
  *		 by DASYLab or null if ethernet is not in use
 **/
-CString GetIPAddress()
+char * GetIPAddress()
 {
-	return deviceLayer->GetIPAddress();
+	return deviceLayer->GetIPAddress().GetBuffer();
 }
 
 /**
